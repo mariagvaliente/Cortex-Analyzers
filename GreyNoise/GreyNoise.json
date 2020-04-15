@@ -1,0 +1,25 @@
+{
+    "name": "GreyNoise",
+    "version": "2.3",
+    "author": "Maria Garcia",
+    "url": "https://github.com/mariagvaliente/cortex-analyzers",
+    "license": "AGPL-V3",
+    "description": "Determine the threat score of an IP based on the classification.",
+    "dataTypeList": ["ip"],
+    "baseConfig": "GreyNoise",
+    "command": "GreyNoise/Greynoise_Analyzer.py",
+    "configurationItems": [
+      {
+        "name": "key",
+        "description": "API key for GreyNoise",
+        "type": "string",
+        "multi": false,
+        "required": false
+      }
+    ],
+    "config": {
+        "check_tlp": true,
+        "max_tlp": 2,
+        "auto_extract": false
+    }
+}
