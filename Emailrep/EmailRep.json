@@ -1,0 +1,11 @@
+{
+  "name": "EmailRep",
+  "version": "1.0",
+  "author": "Maria Garcia",
+  "url": "https://github.com/mariagvaliente/cortex-analyzers",
+  "license": "AGPL-V3",
+  "description": "emailrep.io score",
+  "dataTypeList": ["mail"],
+  "command": "Emailrep/Emailrep_Analyzer.py",
+  "baseConfig": "EmailRep"
+}
