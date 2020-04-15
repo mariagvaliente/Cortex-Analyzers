@@ -1,0 +1,20 @@
+{
+  "name": "HybridAnalysis_GetReport",
+  "version": "1.0",
+  "author": "Maria Garcia",
+  "url": "https://github.com/mariagvaliente/cortex-analyzer",
+  "license": "AGPL-V3",
+  "dataTypeList": ["hash", "ip", "domain"],
+  "description": "Get threat score of an IP, domain or hash.",
+  "command": "HybridAnalysis/HybridAnalysis_analyzer.py",
+  "baseConfig": "HybridAnalysis",
+  "configurationItems": [
+    {
+      "name": "key",
+      "description": "API key",
+      "type": "string",
+      "multi": false,
+      "required": true
+    }
+  ]
+}
