@@ -26,82 +26,75 @@ class AutoFocusAnalyzer(Analyzer):
         res = {'metadata': sample.serialize(),'tags': [tag.serialize() for tag in sample.__getattribute__('tags')]}
         return res
 
+    def get_request(self):
+        indicator_type_initial = str(self.data_type)
+        if indicator_type_initial == "ip":
+           indicator_type = "ipv4_address"
+        elif indicator_type_initial == "domain":
+           indicator_type = "domain"
+        elif indicator_type_initial == "url":
+           indicator_type = "url"
+        indicator_value = str(self.getData())
+        self.params = {"indicatorType": indicator_type, "indicatorValue": indicator_value, "includeTags": "true"}
+        url = str(self.basic_url)
+        r = requests.get(url, params=self.params, headers=self.headers)
+        res_search = r.json()
+        indicator = res_search.get('indicator')
+        tags = res_search.get('tags')
+        res = {'metadata': indicator, 'tags': tags}
+        return res
+
     def summary(self, raw):
         taxonomies = []
         level = "info"
         namespace = "PaloAltoNetworks"
+        value = "1/5"
 
-        if self.service == "search_hash":
-            if "metadata" in raw:
+        if "metadata" in raw:
+            if self.service == "search_hash":
                 verdict = raw.get('metadata').get('verdict')
                 last_seen = raw.get('metadata').get('finish_date')
-                value = "1/5"
-                if verdict == "malware":
-                    value = "5/5"
-                    level = "malicious"
-                elif verdict == "phising":
-                    value = "4/5"
-                    level = "suspicious"
-                elif verdict == "greyware":
-                    value = "3/5"
-                    level = "suspicious"
-                else:
-                    value = "0/5"
-                    level = "safe"
-                taxonomies.append(self.build_taxonomy(level,namespace,"Score",value))
-                taxonomies.append(self.build_taxonomy(level,namespace,"Last_seen",last_seen))
             else:
-                value = "Not found"
-                taxonomies.append(self.build_taxonomy(level,namespace,"Autofocus",value))
-
-            tags = raw.get('tags')
-            for tag in tags:
-                tag_name = tag.get('name')
-                tag_class = tag.get('tag_class')
-                taxonomies.append(self.build_taxonomy(level,namespace,tag_class,tag_name))
-        else:
-            indicator = raw.get('indicator')
-            if indicator != None:
-                verdict = indicator.get('latestPanVerdicts')
-                verdict_WF = verdict.get('WF_SAMPLE')
-                verdict_PB = verdict.get('PAN_DB')
-                if (verdict_WF or verdict_PB) != None:
-                    if (verdict_WF or verdict_PB) == 'BENIGN':
-                        value = "0/5"
-                        level = "safe"
-                    elif (verdict_WF or verdict_PB) == 'GREYWARE':
-                        value = "3/5"
-                        level = "suspicious"
-                    elif (verdict_WF or verdict_PB) == 'PHISING':
-                        value = "4/5"
-                        level = "malicious"
-                    elif (verdict_WF or verdict_PB) == ('MALWARE') or ('C2'):
-                        value = "5/5"
-                        level = "malicious"
-                    else:
-                        value = "1/5"
-                        level = "info"
+                verdict_dict = raw.get('metadata').get('latestPanVerdicts')
+                if verdict_dict.get('WF_SAMPLE') != None:
+                    verdict = verdict_dict.get('WF_SAMPLE')
+                elif verdict_dict.get('PAN_DB') != None:
+                    verdict = verdict_dict.get('PAN_DB')
                 else:
-                    value = "1/5"
-                    level = "info"
-                taxonomies.append(self.build_taxonomy(level,namespace,"Score",value))
-                last_seen_timestamp = indicator.get('lastSeenTsGlobal')
+                    verdict = None
+                last_seen_timestamp = raw.get('metadata').get('lastSeenTsGlobal')
                 last_seen_timestamp_str = str(last_seen_timestamp)
                 last_seen_timestamp_cut = last_seen_timestamp_str[:-3]
                 last_seen_timestamp_result = int(last_seen_timestamp_cut)
-                last_seen = datetime.fromtimestamp(last_seen_timestamp_result)
-                taxonomies.append(self.build_taxonomy(level,namespace,"Last_seen",last_seen))
-            else:
-                value = "Not found"
-                taxonomies.append(self.build_taxonomy(level,namespace,"Autofocus",value))
-
+                last_seen = datetime.fromtimestamp(last_seen_timestamp_result).isoformat()
+            if verdict == ("malware") or ("MALWARE") or ("C2"):
+                value = "5/5"
+                level = "malicious"
+            elif verdict == ("phising") or ("PHISING"):
+                value = "4/5"
+                level = "suspicious"
+            elif verdict == ("greyware") or ("GREYWARE"):
+                value = "3/5"
+                level = "suspicious"
+            elif verdict == ("benign") or ("BENIGN"):
+                value = "0/5"
+                level = "safe"
+            taxonomies.append(self.build_taxonomy(level,namespace,"Score",value))
+            taxonomies.append(self.build_taxonomy(level,namespace,"Last_seen",last_seen))
+        else:
+            value = "Not found"
+            taxonomies.append(self.build_taxonomy(level,namespace,"Autofocus",value))
         return {'taxonomies': taxonomies}
 
     def artifacts(self, report):
         artifacts = []
         tags = report.get('tags')
         for tag in tags:
-            tag_name = tag.get('name')
+            if self.service == "search_hash":
+               tag_name = tag.get('name')
+            else:
+               tag_name = tag.get('tag_name')
+
             tag_class_id = tag.get('tag_class_id')
             if tag_class_id == 1:
                observable = {'dataType': 'threat_actor', 'data': tag_name}
@@ -122,15 +115,10 @@ class AutoFocusAnalyzer(Analyzer):
         try:
             if self.service == "search_hash":
                 records = self.execute_autofocus_service()
-                self.report(records)
             else:
-                indicator_type = str(self.data_type)
-                indicator_value = str(self.getData())
-                self.params = {"indicatorType": indicator_type, "indicatorValue": indicator_value, "includeTags": "true"}
-                url = str(self.basic_url)
-                r = requests.get(url, params=self.params, headers=self.headers)
-                res_search = r.json()
-                self.report(res_search)
+                records = self.get_request()
+
+            self.report(records)
 
         except AFSampleAbsent as e: # Sample not in Autofocus
             self.error('Unknown sample in Autofocus')
