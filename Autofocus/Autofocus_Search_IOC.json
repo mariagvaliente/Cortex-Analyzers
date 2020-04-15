@@ -1,0 +1,23 @@
+{
+    "name": "Autofocus_Search_IOC",
+    "version": "1.0",
+    "author": "Maria Garcia",
+    "url": "https://github.com/mariagvaliente/cortex-analyzers",
+    "license": "AGPL-V3",
+    "baseConfig": "Autofocus",
+    "config": {
+        "service": "search_ioc"
+    },
+    "description": "Search information about an IOC.",
+    "dataTypeList": ["domain","fqdn","ip","url"],
+    "command": "Autofocus/Autofocus_Analyzer.py",
+    "configurationItems": [
+        {
+          "name": "apikey",
+          "description": "Autofocus API key",
+          "type": "string",
+          "multi": false,
+          "required": true
+        }
+    ]
+}

@@ -1,0 +1,23 @@
+{
+    "name": "Autofocus_Search_Hash",
+    "version": "1.0",
+    "author": "Maria Garcia",
+    "url": "https://github.com/mariagvaliente/cortex-analyzers",
+    "license": "AGPL-V3",
+    "baseConfig": "Autofocus",
+    "config": {
+        "service": "search_hash"
+    },
+    "description": "Search information about a filehash.",
+    "dataTypeList": ["hash"],
+    "command": "Autofocus/Autofocus_Analyzer.py",
+    "configurationItems": [
+        {
+          "name": "apikey",
+          "description": "Autofocus API key",
+          "type": "string",
+          "multi": false,
+          "required": true
+        }
+    ]
+}
