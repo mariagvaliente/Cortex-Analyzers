@@ -1,0 +1,27 @@
+{
+  "name": "Censys",
+  "author": "Maria Garcia",
+  "license": "AGPL-V3",
+  "url": "https://github.com/mariagvaliente/cortex-analyzers",
+  "version": "1.0",
+  "description": "Get tags of an IP or domain.",
+  "dataTypeList": ["ip", "domain"],
+  "baseConfig": "Censys",
+  "command": "Censys/Censys_Analyzer.py",
+  "configurationItems": [
+    {
+      "name": "uid",
+      "description": "UID for Censys",
+      "type": "string",
+      "multi": false,
+      "required": true
+    },
+    {
+      "name": "key",
+      "description": "API key",
+      "type": "string",
+      "multi": false,
+      "required": true
+    }
+  ]
+}
