@@ -36,45 +36,58 @@ class HybridAnalysisAnalyzer(Analyzer):
                 level = 'suspicious'
             elif verdict == 'whitelisted':
                 level = 'safe'
-            elif verdict == 'no specific threat':
+            else:
                 level = 'info'
+            if threat_score == None:
+                threat_score = 'Not found'
+            if last_seen == None:
+                last_seen = 'Not found'
 
             if len(tags) != 0:
                 for tag in tags:
                    taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag))
-
+            taxonomies.append(self.build_taxonomy(level, namespace, "Score", threat_score))
+            taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
         else:
-            result = raw.get('result')
-            verdict = result[0].get('verdict')
-            threat_score = result[0].get('threat_score')
-            last_seen = result[0].get('analysis_start_time')
+            count = raw.get('count')
+            if count == 0:
+               taxonomies.append(self.build_taxonomy(level, namespace, "Report", "Not found"))
+            else:
+               result = raw.get('result')
+               verdict = result[0].get('verdict')
+               threat_score = result[0].get('threat_score')
+               last_seen = result[0].get('analysis_start_time')
 
-            if verdict == 'malicious':
-                level = 'malicious'
-            elif verdict == 'suspicious':
-                level = 'suspicious'
-            elif verdict == 'whitelisted':
-                level = 'safe'
-            elif verdict == 'no specific threat':
-                level = 'info'
+               if verdict == 'malicious':
+                  level = 'malicious'
+               elif verdict == 'suspicious':
+                  level = 'suspicious'
+               elif verdict == 'whitelisted':
+                  level = 'safe'
+               else:
+                  level = 'info'
 
-        taxonomies.append(self.build_taxonomy(level, namespace, "Score", threat_score))
-        taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
+               taxonomies.append(self.build_taxonomy(level, namespace, "Score", threat_score))
+               taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
+
         return {"taxonomies": taxonomies}
 
     def artifacts(self, report):
         artifacts = []
         if self.data_type in ['hash']:
             malware_family = report.get('vx_family')
+            if malware_family != None:
+               observable = {'dataType': 'malware_family', 'data': malware_family}
+               artifacts.append(observable)
         else:
-            result = report.get('result')
-            malware_family = result[0].get('vx_family')
+            count = report.get('count')
+            if count != 0:
+               result = report.get('result')
+               malware_family = result[0].get('vx_family')
+               observable = {'dataType': 'malware_family', 'data': malware_family}
+               artifacts.append(observable)
 
-        observable = {'dataType': 'malware_family', 'data': malware_family}
-
-        artifacts.append(observable)
-
-        return artifacts    
+        return artifacts
 
     def run(self):
 
@@ -96,12 +109,15 @@ class HybridAnalysisAnalyzer(Analyzer):
                 indicator_type = 'host'
             indicator_value = str(query_data)
             self.data = {indicator_type: indicator_value}
+            print(self.data)
+            print(self.headers)
 
             url = str(self.basic_url) + str(query_url)
 
             r = requests.post(url, data=self.data, headers=self.headers)
             res_search = r.json()
-            
+            print(res_search)
+            print(r)
             if indicator_type == 'hash':
                 self.report(res_search[0])
             else:
