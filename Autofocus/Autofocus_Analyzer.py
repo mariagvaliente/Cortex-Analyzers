@@ -42,6 +42,7 @@ class AutoFocusAnalyzer(Analyzer):
         indicator = res_search.get('indicator')
         tags = res_search.get('tags')
         res = {'metadata': indicator, 'tags': tags}
+        print(res)
         return res
 
     def summary(self, raw):
@@ -56,17 +57,24 @@ class AutoFocusAnalyzer(Analyzer):
                 last_seen = raw.get('metadata').get('finish_date')
             else:
                 verdict_dict = raw.get('metadata').get('latestPanVerdicts')
+                print(verdict_dict)
                 if verdict_dict.get('WF_SAMPLE') != None:
                     verdict = verdict_dict.get('WF_SAMPLE')
+                    print(verdict)
                 elif verdict_dict.get('PAN_DB') != None:
                     verdict = verdict_dict.get('PAN_DB')
+                    print(verdict)
                 else:
                     verdict = None
                 last_seen_timestamp = raw.get('metadata').get('lastSeenTsGlobal')
-                last_seen_timestamp_str = str(last_seen_timestamp)
-                last_seen_timestamp_cut = last_seen_timestamp_str[:-3]
-                last_seen_timestamp_result = int(last_seen_timestamp_cut)
-                last_seen = datetime.fromtimestamp(last_seen_timestamp_result).isoformat()
+                if last_seen_timestamp != None:
+                    last_seen_timestamp_str = str(last_seen_timestamp)
+                    last_seen_timestamp_cut = last_seen_timestamp_str[:-3]
+                    last_seen_timestamp_result = int(last_seen_timestamp_cut)
+                    last_seen = datetime.fromtimestamp(last_seen_timestamp_result).isoformat()
+                    print(last_seen)
+                else:
+                    last_seen = "Not found"
             if verdict == ("malware") or ("MALWARE") or ("C2"):
                 value = "5/5"
                 level = "malicious"
@@ -84,30 +92,33 @@ class AutoFocusAnalyzer(Analyzer):
         else:
             value = "Not found"
             taxonomies.append(self.build_taxonomy(level,namespace,"Autofocus",value))
+        print(taxonomies)
         return {'taxonomies': taxonomies}
 
     def artifacts(self, report):
         artifacts = []
         tags = report.get('tags')
-        for tag in tags:
-            if self.service == "search_hash":
-               tag_name = tag.get('name')
-            else:
-               tag_name = tag.get('tag_name')
+        if len(tags) != 0:
+           for tag in tags:
+               if self.service == "search_hash":
+                  tag_name = tag.get('name')
+               else:
+                  tag_name = tag.get('tag_name')
+               print(tag_name)
 
-            tag_class_id = tag.get('tag_class_id')
-            if tag_class_id == 1:
-               observable = {'dataType': 'threat_actor', 'data': tag_name}
-            elif tag_class_id == 2:
-               observable = {'dataType': 'campaign', 'data': tag_name}
-            elif tag_class_id == 3:
-               observable = {'dataType': 'malware_family', 'data': tag_name}
-            elif tag_class_id == 4:
-               observable = {'dataType': 'exploit', 'data': tag_name}
-            else:
-               observable = {'dataType': 'malicious_behaviour', 'data': tag_name}
+               tag_class_id = tag.get('tag_class_id')
+               if tag_class_id == 1:
+                  observable = {'dataType': 'threat_actor', 'data': tag_name}
+               elif tag_class_id == 2:
+                  observable = {'dataType': 'campaign', 'data': tag_name}
+               elif tag_class_id == 3:
+                  observable = {'dataType': 'malware_family', 'data': tag_name}
+               elif tag_class_id == 4:
+                  observable = {'dataType': 'exploit', 'data': tag_name}
+               else:
+                  observable = {'dataType': 'malicious_behaviour', 'data': tag_name}
 
-            artifacts.append(observable)
+               artifacts.append(observable)
 
         return artifacts
 
