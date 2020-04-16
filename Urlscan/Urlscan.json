@@ -1,0 +1,20 @@
+{
+  "name": "Urlscan",
+  "author": "Maria Garcia",
+  "license": "AGPL-V3",
+  "url": "https://github.com/mariagvaliente/cortex-analyzers",
+  "version": "1.0",
+  "description": "Scan domains on urlscan.io",
+  "dataTypeList": ["domain", "fqdn"],
+  "command": "Urlscan/Urlscan_Analyzer.py",
+  "baseConfig": "Urlscan.io",
+  "configurationItems": [
+    {
+      "name": "key",
+      "description": "API key for Urlscan.io",
+      "type": "string",
+      "multi": false,
+      "required": true
+    }
+  ]
+}
