@@ -42,7 +42,6 @@ class AutoFocusAnalyzer(Analyzer):
         indicator = res_search.get('indicator')
         tags = res_search.get('tags')
         res = {'metadata': indicator, 'tags': tags}
-        print(res)
         return res
 
     def summary(self, raw):
@@ -57,13 +56,10 @@ class AutoFocusAnalyzer(Analyzer):
                 last_seen = raw.get('metadata').get('finish_date')
             else:
                 verdict_dict = raw.get('metadata').get('latestPanVerdicts')
-                print(verdict_dict)
                 if verdict_dict.get('WF_SAMPLE') != None:
                     verdict = verdict_dict.get('WF_SAMPLE')
-                    print(verdict)
                 elif verdict_dict.get('PAN_DB') != None:
                     verdict = verdict_dict.get('PAN_DB')
-                    print(verdict)
                 else:
                     verdict = None
                 last_seen_timestamp = raw.get('metadata').get('lastSeenTsGlobal')
@@ -72,7 +68,6 @@ class AutoFocusAnalyzer(Analyzer):
                     last_seen_timestamp_cut = last_seen_timestamp_str[:-3]
                     last_seen_timestamp_result = int(last_seen_timestamp_cut)
                     last_seen = datetime.fromtimestamp(last_seen_timestamp_result).isoformat()
-                    print(last_seen)
                 else:
                     last_seen = "Not found"
             if verdict == ("malware") or ("MALWARE") or ("C2"):
@@ -92,7 +87,6 @@ class AutoFocusAnalyzer(Analyzer):
         else:
             value = "Not found"
             taxonomies.append(self.build_taxonomy(level,namespace,"Autofocus",value))
-        print(taxonomies)
         return {'taxonomies': taxonomies}
 
     def artifacts(self, report):
@@ -104,7 +98,6 @@ class AutoFocusAnalyzer(Analyzer):
                   tag_name = tag.get('name')
                else:
                   tag_name = tag.get('tag_name')
-               print(tag_name)
 
                tag_class_id = tag.get('tag_class_id')
                if tag_class_id == 1:
