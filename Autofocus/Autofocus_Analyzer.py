@@ -3,6 +3,7 @@
 from autofocus import AutoFocusAPI, AFSample, AFServerError, AFClientError, AFSampleAbsent
 from cortexutils.analyzer import Analyzer
 import requests
+import json
 from datetime import datetime
 
 AutoFocusAPI.api_key = "Your Api key here"
@@ -17,14 +18,11 @@ class AutoFocusAnalyzer(Analyzer):
             'config.apikey', None, 'Missing AutoFocus API key')
         #URL api only for data types: IP, domain and url
         self.basic_url = "https://autofocus.paloaltonetworks.com/api/v1.0/tic"
-        self.headers = {"apiKey": self.autofocus_key, "Content-Type": "application/json"}
-
-    def execute_autofocus_service(self):
-        data = self.getData()
-        AutoFocusAPI.api_key = self.autofocus_key
-        sample = AFSample.get(data)
-        res = {'metadata': sample.serialize(),'tags': [tag.serialize() for tag in sample.__getattribute__('tags')]}
-        return res
+        if self.service == "search_ioc":
+            self.headers = {"apiKey": self.autofocus_key, "Content-Type": "application/json"}
+        else:
+            self.headers = {"Content-Type": "application/json"}
+            self.data = {"apiKey": self.autofocus_key, "coverage": "true", "sections": ["coverage"]}
 
     def get_request(self):
         indicator_type_initial = str(self.data_type)
@@ -42,6 +40,26 @@ class AutoFocusAnalyzer(Analyzer):
         indicator = res_search.get('indicator')
         tags = res_search.get('tags')
         res = {'metadata': indicator, 'tags': tags}
+        return res
+
+    def get_analysis(self):
+        indicator_value = str(self.getData())
+        url_analysis = "https://autofocus.paloaltonetworks.com/api/v1.0/sample/"
+        query = "/analysis"
+        url = url_analysis + indicator_value + query
+        data = json.dumps(self.data)
+        r = requests.post(url, data=data, headers=self.headers)
+        print(r)
+        res_search = r.json()
+        print(res_search)
+        return res_search
+
+    def execute_autofocus_service(self):
+        data = self.getData()
+        AutoFocusAPI.api_key = self.autofocus_key
+        sample = AFSample.get(data)
+        analysis = self.get_analysis()
+        res = {'metadata': sample.serialize(),'tags': [tag.serialize() for tag in sample.__getattribute__('tags')], 'analysis': analysis}
         return res
 
     def summary(self, raw):
@@ -107,9 +125,12 @@ class AutoFocusAnalyzer(Analyzer):
                elif tag_class_id == 3:
                   observable = {'dataType': 'malware_family', 'data': tag_name}
                elif tag_class_id == 4:
-                  observable = {'dataType': 'exploit', 'data': tag_name}
+                  if tag_name.find("CVE") >= 0:
+                     observable = {'dataType': 'vulnerability', 'data': tag_name}
+                  else:
+                     observable = {'dataType': 'exploit', 'data': tag_name}
                else:
-                  observable = {'dataType': 'malicious_behaviour', 'data': tag_name}
+                  observable = {'dataType': 'attack_pattern', 'data': tag_name}
 
                artifacts.append(observable)
 

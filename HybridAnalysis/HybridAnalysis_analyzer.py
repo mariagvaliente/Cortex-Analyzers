@@ -75,17 +75,26 @@ class HybridAnalysisAnalyzer(Analyzer):
     def artifacts(self, report):
         artifacts = []
         if self.data_type in ['hash']:
-            malware_family = report.get('vx_family')
-            if malware_family != None:
-               observable = {'dataType': 'malware_family', 'data': malware_family}
-               artifacts.append(observable)
+            vx = report.get('vx_family')
+            if vx != None:
+              if vx.find('CVE') >= 0:
+                 observable = {'dataType': 'vulnerability', 'data': vx}
+                 artifacts.append(observable)
+              else:
+                 observable = {'dataType': 'malware-family', 'data': vx}
+                 artifacts.append(observable)
         else:
             count = report.get('count')
             if count != 0:
-               result = report.get('result')
-               malware_family = result[0].get('vx_family')
-               observable = {'dataType': 'malware_family', 'data': malware_family}
-               artifacts.append(observable)
+              result = report.get('result')
+              vx = result[0].get('vx_family')
+              if vx != None:
+                 if vx.find('CVE') >= 0:
+                    observable = {'dataType': 'vulnerability', 'data': vx}
+                    artifacts.append(observable)
+                 else:
+                    observable = {'dataType': 'malware-family', 'data': vx}
+                    artifacts.append(observable)
 
         return artifacts
 

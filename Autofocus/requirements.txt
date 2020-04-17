@@ -1,0 +1,5 @@
+cortexutils
+requests
+json
+datetime
+git+https://github.com/PaloAltoNetworks/autofocus-client-library
