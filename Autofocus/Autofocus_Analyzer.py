@@ -6,7 +6,7 @@ import requests
 import json
 from datetime import datetime
 
-AutoFocusAPI.api_key = "Your Api key here"
+AutoFocusAPI.api_key = "Your API key here"
 
 # Main analyzer
 class AutoFocusAnalyzer(Analyzer):
@@ -49,9 +49,7 @@ class AutoFocusAnalyzer(Analyzer):
         url = url_analysis + indicator_value + query
         data = json.dumps(self.data)
         r = requests.post(url, data=data, headers=self.headers)
-        print(r)
         res_search = r.json()
-        print(res_search)
         return res_search
 
     def execute_autofocus_service(self):
@@ -133,6 +131,35 @@ class AutoFocusAnalyzer(Analyzer):
                   observable = {'dataType': 'attack_pattern', 'data': tag_name}
 
                artifacts.append(observable)
+        if self.service == "search_hash":
+            analysis = report.get('analysis')
+            if analysis != None:
+                coverage = analysis.get('coverage')
+                if coverage != None:
+                    malware_sig = coverage.get('wf_av_sig')
+                    dns_sig = coverage.get('dns_sig')
+                    fileurl_sig = coverage.get('fileurl_sig')
+                    url_cat = coverage.get('url_cat')
+                    if len(malware_sig) != 0:
+                        for sig in malware_sig:
+                            sig_name = sig.get('name')
+                            observable_sig = {'dataType': 'malware_family', 'data': sig_name}
+                            artifacts.append(observable_sig)
+                    if len(dns_sig) != 0:
+                        for domain in dns_sig:
+                            dns_name = domain.get('domain')
+                            observable_dns = {'dataType': 'domain', 'data': dns_name}
+                            artifacts.append(observable_dns)
+                    if len(fileurl_sig) != 0:
+                        for file in fileurl_sig:
+                            file_name = file.get('name')
+                            observable_file = {'dataType': 'filename', 'data': file_name}
+                            artifacts.append(observable_file)
+                    if len(url_cat) != 0:
+                        for url in url_cat:
+                            url_name = url.get('url')
+                            observable_url = {'dataType': 'url', 'data': url_name}
+                            artifacts.append(observable_url)
 
         return artifacts
 

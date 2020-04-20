@@ -16,85 +16,74 @@ class HybridAnalysisAnalyzer(Analyzer):
         self.basic_url = 'https://www.hybrid-analysis.com/api/v2/search/'
         self.headers = {'api-key': self.api_key,'user-agent':'Falcon Sandbox'}
 
-
     def summary(self, raw):
         taxonomies = []
 
         # default values
         level = "info"
         namespace = "HybridAnalysis"
+        verdict = raw.get('verdict')
+        threat_score = raw.get('threat_score')
+        last_seen = raw.get('analysis_start_time')
+        tags = raw.get('tags')
 
-        if self.data_type in ['hash']:
-            verdict = raw.get('verdict')
-            threat_score = raw.get('threat_score')
-            last_seen = raw.get('analysis_start_time')
-            tags = raw.get('tags')
-
-            if verdict == 'malicious':
-                level = 'malicious'
-            elif verdict == 'suspicious':
-                level = 'suspicious'
-            elif verdict == 'whitelisted':
-                level = 'safe'
-            else:
-                level = 'info'
-            if threat_score == None:
-                threat_score = 'Not found'
-            if last_seen == None:
-                last_seen = 'Not found'
-
-            if len(tags) != 0:
-                for tag in tags:
-                   taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag))
-            taxonomies.append(self.build_taxonomy(level, namespace, "Score", threat_score))
-            taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
+        if verdict == 'malicious':
+           level = 'malicious'
+        elif verdict == 'suspicious':
+           level = 'suspicious'
+        elif verdict == 'whitelisted':
+           level = 'safe'
         else:
-            count = raw.get('count')
-            if count == 0:
-               taxonomies.append(self.build_taxonomy(level, namespace, "Report", "Not found"))
-            else:
-               result = raw.get('result')
-               verdict = result[0].get('verdict')
-               threat_score = result[0].get('threat_score')
-               last_seen = result[0].get('analysis_start_time')
+           level = 'info'
+        if threat_score == None:
+           threat_score = 'Not found'
+        if last_seen == None:
+           last_seen = 'Not found'
 
-               if verdict == 'malicious':
-                  level = 'malicious'
-               elif verdict == 'suspicious':
-                  level = 'suspicious'
-               elif verdict == 'whitelisted':
-                  level = 'safe'
-               else:
-                  level = 'info'
-
-               taxonomies.append(self.build_taxonomy(level, namespace, "Score", threat_score))
-               taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
+        if len(tags) != 0:
+           for tag in tags:
+               taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag))
+        taxonomies.append(self.build_taxonomy(level, namespace, "Score", threat_score))
+        taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
 
         return {"taxonomies": taxonomies}
 
     def artifacts(self, report):
         artifacts = []
-        if self.data_type in ['hash']:
-            vx = report.get('vx_family')
-            if vx != None:
-              if vx.find('CVE') >= 0:
-                 observable = {'dataType': 'vulnerability', 'data': vx}
-                 artifacts.append(observable)
-              else:
-                 observable = {'dataType': 'malware-family', 'data': vx}
-                 artifacts.append(observable)
-        else:
-            count = report.get('count')
-            if count != 0:
-              result = report.get('result')
-              vx = result[0].get('vx_family')
-              if vx != None:
-                 if vx.find('CVE') >= 0:
-                    observable = {'dataType': 'vulnerability', 'data': vx}
-                    artifacts.append(observable)
-                 else:
-                    observable = {'dataType': 'malware-family', 'data': vx}
-                    artifacts.append(observable)
+        vx = report.get('vx_family')
+        if vx != None:
+           if vx.find('CVE') >= 0:
+              observable_vx = {'dataType': 'vulnerability', 'data': vx}
+           else:
+              observable_vx = {'dataType': 'malware-family', 'data': vx}
+           artifacts.append(observable_vx)
+        mitre_attcks = report.get('mitre_attcks')
+        if len(mitre_attcks) != 0:
+           for attack in mitre_attcks:
+               technique = attack.get('technique')
+               observable_mittre = {'dataType': 'attack_pattern', 'data': technique}
+               artifacts.append(observable_mittre)
+        compromised_hosts = report.get('compromised_hosts')
+        if len(compromised_hosts) != 0:
+           for host in compromised_hosts:
+               observable_compromised_hosts = {'dataType': 'ip', 'data': host}
+               artifacts.append(observable_compromised_hosts)
+        hosts = report.get('hosts')
+        if len(hosts) != 0:
+           for host in hosts:
+               observable_hosts = {'dataType': 'ip', 'data': host}
+               artifacts.append(observable_hosts)
+        domains = report.get('domains')
+        if len(domains) != 0:
+           for domain in domains:
+               observable_domains = {'dataType': 'domain', 'data': domain}
+               artifacts.append(observable_domains)
+        extracted_files = report.get('extracted_files')
+        if len(extracted_files) != 0:
+           for file in extracted_files:
+               file_name = file.get('name')
+               observable_files = {'dataType': 'filename', 'data': file_name}
+               artifacts.append(observable_files)
 
         return artifacts
 
@@ -118,19 +107,23 @@ class HybridAnalysisAnalyzer(Analyzer):
                 indicator_type = 'host'
             indicator_value = str(query_data)
             self.data = {indicator_type: indicator_value}
-            print(self.data)
-            print(self.headers)
 
             url = str(self.basic_url) + str(query_url)
 
-            r = requests.post(url, data=self.data, headers=self.headers)
-            res_search = r.json()
-            print(res_search)
-            print(r)
+            response = requests.post(url, data=self.data, headers=self.headers)
+            res_search = response.json()
+
             if indicator_type == 'hash':
                 self.report(res_search[0])
             else:
-                self.report(res_search)
+                url_report = 'https://www.hybrid-analysis.com/api/v2/report/'
+                query = '/summary'
+                result = res_search.get('result')
+                job_id = result[0].get('job_id')
+                url = url_report + str(job_id) + query
+                response_analysis = requests.get(url, headers = self.headers)
+                res_analysis =response_analysis.json()
+                self.report(res_analysis)
 
         except ValueError as e:
             self.unexpectedError(e)
