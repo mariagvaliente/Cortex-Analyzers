@@ -31,6 +31,7 @@ class UrlscanAnalyzer(Analyzer):
         res_search_json = response_search.json()
         return res_search_json
 
+
     def summary(self, raw):
         taxonomies = []
         level = "info"
@@ -48,9 +49,11 @@ class UrlscanAnalyzer(Analyzer):
             headers = response_final.get('headers')
             if headers != None:
                last_seen = headers.get('Last-Modified')
+               print(last_seen)
                if last_seen != None:
                   last_seen_parsed = parse(last_seen).isoformat()
                   dates.append(last_seen_parsed)
+                  print(last_seen_parsed)
             else:
                date = "Not found"
         if len(dates) != 0:

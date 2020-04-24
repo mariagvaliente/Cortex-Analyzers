@@ -26,6 +26,7 @@ class HybridAnalysisAnalyzer(Analyzer):
         threat_score = raw.get('threat_score')
         last_seen = raw.get('analysis_start_time')
         tags = raw.get('tags')
+        av_detect = raw.get('av_detect')
 
         if verdict == 'malicious':
            level = 'malicious'
@@ -36,7 +37,10 @@ class HybridAnalysisAnalyzer(Analyzer):
         else:
            level = 'info'
         if threat_score == None:
-           threat_score = 'Not found'
+           if av_detect != None:
+              threat_score = av_detect
+           else:
+              threat_score = "1/5"
         if last_seen == None:
            last_seen = 'Not found'
 
@@ -50,42 +54,44 @@ class HybridAnalysisAnalyzer(Analyzer):
 
     def artifacts(self, report):
         artifacts = []
-        vx = report.get('vx_family')
-        if vx != None:
-           if vx.find('CVE') >= 0:
-              observable_vx = {'dataType': 'vulnerability', 'data': vx}
-           else:
-              observable_vx = {'dataType': 'malware-family', 'data': vx}
-           artifacts.append(observable_vx)
-        mitre_attcks = report.get('mitre_attcks')
-        if len(mitre_attcks) != 0:
-           for attack in mitre_attcks:
-               technique = attack.get('technique')
-               observable_mittre = {'dataType': 'attack_pattern', 'data': technique}
-               artifacts.append(observable_mittre)
-        compromised_hosts = report.get('compromised_hosts')
-        if len(compromised_hosts) != 0:
-           for host in compromised_hosts:
-               observable_compromised_hosts = {'dataType': 'ip', 'data': host}
-               artifacts.append(observable_compromised_hosts)
-        hosts = report.get('hosts')
-        if len(hosts) != 0:
-           for host in hosts:
-               observable_hosts = {'dataType': 'ip', 'data': host}
-               artifacts.append(observable_hosts)
-        domains = report.get('domains')
-        if len(domains) != 0:
-           for domain in domains:
-               observable_domains = {'dataType': 'domain', 'data': domain}
-               artifacts.append(observable_domains)
-        extracted_files = report.get('extracted_files')
-        if len(extracted_files) != 0:
-           for file in extracted_files:
-               file_name = file.get('name')
-               observable_files = {'dataType': 'filename', 'data': file_name}
-               artifacts.append(observable_files)
+        if report.get('count') != 0:
+           vx = report.get('vx_family')
+           if vx != None:
+              if vx.find('CVE') >= 0:
+                 observable_vx = {'dataType': 'vulnerability', 'data': vx}
+              else:
+                 observable_vx = {'dataType': 'malware-family', 'data': vx}
+              artifacts.append(observable_vx)
+           mitre_attcks = report.get('mitre_attcks')
+           if len(mitre_attcks) != 0:
+              for attack in mitre_attcks:
+                  technique = attack.get('technique')
+                  observable_mittre = {'dataType': 'attack_pattern', 'data': technique}
+                  artifacts.append(observable_mittre)
+           compromised_hosts = report.get('compromised_hosts')
+           if len(compromised_hosts) != 0:
+              for host in compromised_hosts:
+                  observable_compromised_hosts = {'dataType': 'ip', 'data': host}
+                  artifacts.append(observable_compromised_hosts)
+           hosts = report.get('hosts')
+           if len(hosts) != 0:
+              for host in hosts:
+                  observable_hosts = {'dataType': 'ip', 'data': host}
+                  artifacts.append(observable_hosts)
+           domains = report.get('domains')
+           if len(domains) != 0:
+              for domain in domains:
+                  observable_domains = {'dataType': 'domain', 'data': domain}
+                  artifacts.append(observable_domains)
+           extracted_files = report.get('extracted_files')
+           if len(extracted_files) != 0:
+              for file in extracted_files:
+                  file_name = file.get('name')
+                  observable_files = {'dataType': 'filename', 'data': file_name}
+                  artifacts.append(observable_files)
 
         return artifacts
+
 
     def run(self):
 
@@ -107,11 +113,14 @@ class HybridAnalysisAnalyzer(Analyzer):
                 indicator_type = 'host'
             indicator_value = str(query_data)
             self.data = {indicator_type: indicator_value}
+            print(self.data)
+            print(self.headers)
 
             url = str(self.basic_url) + str(query_url)
 
             response = requests.post(url, data=self.data, headers=self.headers)
             res_search = response.json()
+            print(res_search)
 
             if indicator_type == 'hash':
                 self.report(res_search[0])
@@ -119,11 +128,14 @@ class HybridAnalysisAnalyzer(Analyzer):
                 url_report = 'https://www.hybrid-analysis.com/api/v2/report/'
                 query = '/summary'
                 result = res_search.get('result')
-                job_id = result[0].get('job_id')
-                url = url_report + str(job_id) + query
-                response_analysis = requests.get(url, headers = self.headers)
-                res_analysis =response_analysis.json()
-                self.report(res_analysis)
+                if len(result) != 0:
+                   job_id = result[0].get('job_id')
+                   url = url_report + str(job_id) + query
+                   response_analysis = requests.get(url, headers = self.headers)
+                   res_analysis =response_analysis.json()
+                   self.report(res_analysis)
+                else:
+                   self.report(res_search)
 
         except ValueError as e:
             self.unexpectedError(e)

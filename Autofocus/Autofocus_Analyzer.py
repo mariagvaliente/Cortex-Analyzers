@@ -5,6 +5,13 @@ from cortexutils.analyzer import Analyzer
 import requests
 import json
 from datetime import datetime
+import matplotlib.pyplot as plt
+import networkx as nx
+import pathlib
+import os
+import tempfile
+from shutil import copyfileobj
+import ntpath
 
 AutoFocusAPI.api_key = "Your API key here"
 
@@ -105,9 +112,22 @@ class AutoFocusAnalyzer(Analyzer):
             taxonomies.append(self.build_taxonomy(level,namespace,"Autofocus",value))
         return {'taxonomies': taxonomies}
 
+    def createArtifactFile(self, path):
+        (dst, filename) = tempfile.mkstemp(dir=os.path.join(self.job_directory, "output"))
+        try:
+            with open(path, 'r') as src:
+                copyfileobj(src, os.fdopen(dst, 'w'))
+                return {'dataType': "file", 'file': ntpath.basename(filename),  'filename': ntpath.basename(path)}
+        except UnicodeDecodeError:
+            with open(path, 'rb') as src:
+                copyfileobj(src, os.fdopen(dst, 'wb'))
+                return {'dataType': "file", 'file': ntpath.basename(filename),  'filename': ntpath.basename(path)}
+
     def artifacts(self, report):
         artifacts = []
+        relations = []
         tags = report.get('tags')
+        src = str(self.data_type)
         if len(tags) != 0:
            for tag in tags:
                if self.service == "search_hash":
@@ -117,20 +137,27 @@ class AutoFocusAnalyzer(Analyzer):
 
                tag_class_id = tag.get('tag_class_id')
                if tag_class_id == 1:
+                  dst = 'threat_actor'
                   observable = {'dataType': 'threat_actor', 'data': tag_name}
                elif tag_class_id == 2:
+                  dst = 'campaign'
                   observable = {'dataType': 'campaign', 'data': tag_name}
                elif tag_class_id == 3:
+                  dst = 'malware_family'
                   observable = {'dataType': 'malware_family', 'data': tag_name}
                elif tag_class_id == 4:
                   if tag_name.find("CVE") >= 0:
+                     dst = 'vulnerability'
                      observable = {'dataType': 'vulnerability', 'data': tag_name}
                   else:
+                     dst = 'exploit'
                      observable = {'dataType': 'exploit', 'data': tag_name}
                else:
+                  dst = 'attack_pattern'
                   observable = {'dataType': 'attack_pattern', 'data': tag_name}
-
                artifacts.append(observable)
+               relations.append(dst)
+
         if self.service == "search_hash":
             analysis = report.get('analysis')
             if analysis != None:
@@ -143,25 +170,39 @@ class AutoFocusAnalyzer(Analyzer):
                     if len(malware_sig) != 0:
                         for sig in malware_sig:
                             sig_name = sig.get('name')
+                            dst = 'malware_family'
                             observable_sig = {'dataType': 'malware_family', 'data': sig_name}
                             artifacts.append(observable_sig)
                     if len(dns_sig) != 0:
                         for domain in dns_sig:
                             dns_name = domain.get('domain')
+                            dst = 'domain'
                             observable_dns = {'dataType': 'domain', 'data': dns_name}
                             artifacts.append(observable_dns)
-                    if len(fileurl_sig) != 0:
-                        for file in fileurl_sig:
-                            file_name = file.get('name')
-                            observable_file = {'dataType': 'filename', 'data': file_name}
-                            artifacts.append(observable_file)
                     if len(url_cat) != 0:
                         for url in url_cat:
                             url_name = url.get('url')
+                            dst = 'url'
                             observable_url = {'dataType': 'url', 'data': url_name}
                             artifacts.append(observable_url)
+                    relations.append(dst)
+        observables = {'src': src, 'dst': relations}
+        G = nx.DiGraph()
+        G.add_node(observables['src'])
+        obs_dst = observables['dst']
+        for o in obs_dst:
+            G.add_edge(observables['src'], o)
+        pos = nx.spring_layout(G)
+        nx.draw_networkx_labels(G, pos)
+        nx.draw_networkx_nodes(G, pos)
+        nx.draw_networkx_edges(G, pos, edgelist= G.edges)
+        nx.write_gml(G, "/tmp/subgraph.gml")
+        path = "/tmp/subgraph.gml"
+        observable_subgraph = self.createArtifactFile(path)
+        artifacts.append(observable_subgraph)
 
         return artifacts
+
 
     def run(self):
         try:
