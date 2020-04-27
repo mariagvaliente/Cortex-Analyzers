@@ -89,6 +89,14 @@ class CensysAnalyzer(Analyzer):
             'taxonomies': taxonomies
         }
 
+    def artifacts(self, report):
+        artifacts = []
+        heartbleed = report.get('443', {}).get('https', {}).get('heartbleed', {}).get('heartbleed_vulnerable', False)
+        if heartbleed:
+           observable_vuln = {'dataType': 'vulnerability', 'data': 'CVE-2014-0160'}
+           artifacts.append(observable_vuln)
+
+        return artifacts
 
 if __name__ == '__main__':
     CensysAnalyzer().run()

@@ -71,7 +71,7 @@ class AutoFocusAnalyzer(Analyzer):
         taxonomies = []
         level = "info"
         namespace = "PaloAltoNetworks"
-        value = "1/5"
+        value = "1"
 
         if "metadata" in raw:
             if self.service == "search_hash":
@@ -94,16 +94,16 @@ class AutoFocusAnalyzer(Analyzer):
                 else:
                     last_seen = "Not found"
             if verdict == "benign" or verdict == "BENIGN":
-                value = "0/5"
+                value = "0"
                 level = "safe"
             elif verdict == "greyware" or verdict == "GREYWARE":
-                value = "3/5"
+                value = "3"
                 level = "suspicious"
             elif verdict == "phising" or verdict == "PHISING":
-                value = "4/5"
+                value = "4"
                 level = "malicious"
             elif verdict == "malware" or verdict == "MALWARE" or verdict == "C2":
-                value = "5/5"
+                value = "5"
                 level = "malicious"
             taxonomies.append(self.build_taxonomy(level,namespace,"Score",value))
             taxonomies.append(self.build_taxonomy(level,namespace,"Last_seen",last_seen))
@@ -187,15 +187,19 @@ class AutoFocusAnalyzer(Analyzer):
                             artifacts.append(observable_url)
                     relations.append(dst)
         observables = {'src': src, 'dst': relations}
+
         G = nx.DiGraph()
+        #Anyadir atributos al nodo src
         G.add_node(observables['src'])
+
+        #Anyadir atributos al nodo dst
+
         obs_dst = observables['dst']
         for o in obs_dst:
+            #Anyadir atributos a las aristas
             G.add_edge(observables['src'], o)
-        pos = nx.spring_layout(G)
-        nx.draw_networkx_labels(G, pos)
-        nx.draw_networkx_nodes(G, pos)
-        nx.draw_networkx_edges(G, pos, edgelist= G.edges)
+
+       #Crear fichero con el subgrafo
         nx.write_gml(G, "/tmp/subgraph.gml")
         path = "/tmp/subgraph.gml"
         observable_subgraph = self.createArtifactFile(path)

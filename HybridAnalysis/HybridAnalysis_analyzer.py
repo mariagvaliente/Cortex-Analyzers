@@ -38,16 +38,41 @@ class HybridAnalysisAnalyzer(Analyzer):
            level = 'info'
         if threat_score == None:
            if av_detect != None:
-              threat_score = av_detect
+              if 20 > int(av_detect) >= 1:
+                 score = '2'
+                 level = 'info'
+              elif 60 > int(av_detect) >= 20:
+                 score = '3'
+                 level = 'suspicious'
+              elif 80 > int(av_detect) >= 60:
+                 score = '4'
+                 level = 'malicious'
+              elif 100 >= int(av_detect) >= 80:
+                 score = '5'
+                 level = 'malicious'
            else:
-              threat_score = "1/5"
+              score = "1"
+              level = 'info'
+        else:
+           if threat_score == '0':
+              if verdict == 'whitelisted':
+                 score = '0'
+              else:
+                 score = '1'
+           elif 20 > int(threat_score) >= 1:
+              score = '2'
+           elif 60 > int(threat_score) >= 20:
+              score = '3'
+           elif 80 > int(threat_score) >= 60:
+              score = '4'
+           elif 100 >= int(threat_score) >= 80:
+              score = '5'
         if last_seen == None:
            last_seen = 'Not found'
-
         if len(tags) != 0:
            for tag in tags:
                taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag))
-        taxonomies.append(self.build_taxonomy(level, namespace, "Score", threat_score))
+        taxonomies.append(self.build_taxonomy(level, namespace, "Score", score))
         taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
 
         return {"taxonomies": taxonomies}
@@ -87,9 +112,17 @@ class HybridAnalysisAnalyzer(Analyzer):
            if len(extracted_files) != 0:
               for file in extracted_files:
                   file_name = file.get('name')
+                  hash_sha1 = file.get('sha1')
+                  hash_sha256 = file.get('sha256')
+                  hash_md5 = file.get('md5')
                   observable_files = {'dataType': 'filename', 'data': file_name}
+                  observable_hash_sha1 = {'dataType': 'hash', 'data': hash_sha1}
+                  observable_hash_sha256 = {'dataType': 'hash', 'data': hash_sha256}
+                  observable_hash_md5 = {'dataType': 'hash', 'data': hash_md5}
                   artifacts.append(observable_files)
-
+                  artifacts.append(observable_hash_sha1)
+                  artifacts.append(observable_hash_sha256)
+                  artifacts.append(observable_hash_md5)
         return artifacts
 
 
