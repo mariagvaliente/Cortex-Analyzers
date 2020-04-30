@@ -1,6 +1,6 @@
 {
   "name": "VirusTotal_GetReport",
-  "version": "1.0",
+  "version": "3.1",
   "author": "Maria Garcia",
   "url": "https://github.com/mariagvaliente/cortex-analyzers",
   "license": "AGPL-V3",
