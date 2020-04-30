@@ -5,13 +5,6 @@ from cortexutils.analyzer import Analyzer
 import requests
 import json
 from datetime import datetime
-import matplotlib.pyplot as plt
-import networkx as nx
-import pathlib
-import os
-import tempfile
-from shutil import copyfileobj
-import ntpath
 
 AutoFocusAPI.api_key = "Your API key here"
 
@@ -35,10 +28,13 @@ class AutoFocusAnalyzer(Analyzer):
         indicator_type_initial = str(self.data_type)
         if indicator_type_initial == "ip":
            indicator_type = "ipv4_address"
+           field = "sample.tasks.http"
         elif indicator_type_initial == "domain":
            indicator_type = "domain"
+           field = "sample.tasks.dns"
         elif indicator_type_initial == "url":
            indicator_type = "url"
+           field = "sample.tasks.http"
         indicator_value = str(self.getData())
         self.params = {"indicatorType": indicator_type, "indicatorValue": indicator_value, "includeTags": "true"}
         url = str(self.basic_url)
@@ -46,8 +42,13 @@ class AutoFocusAnalyzer(Analyzer):
         res_search = r.json()
         indicator = res_search.get('indicator')
         tags = res_search.get('tags')
-        res = {'metadata': indicator, 'tags': tags}
+        relations = []
+        search = {"operator":"all","children":[{"field":field,"operator":"contains","value":indicator_value}]}
+        for sample in AFSample.search(search):
+            relations.append({'metadata': sample.serialize(),'tags': [tag.serialize() for tag in sample.__getattribute__('tags')]})
+        res = {'metadata': indicator, 'tags': tags, 'relations': relations}
         return res
+
 
     def get_analysis(self):
         indicator_value = str(self.getData())
@@ -112,22 +113,10 @@ class AutoFocusAnalyzer(Analyzer):
             taxonomies.append(self.build_taxonomy(level,namespace,"Autofocus",value))
         return {'taxonomies': taxonomies}
 
-    def createArtifactFile(self, path):
-        (dst, filename) = tempfile.mkstemp(dir=os.path.join(self.job_directory, "output"))
-        try:
-            with open(path, 'r') as src:
-                copyfileobj(src, os.fdopen(dst, 'w'))
-                return {'dataType': "file", 'file': ntpath.basename(filename),  'filename': ntpath.basename(path)}
-        except UnicodeDecodeError:
-            with open(path, 'rb') as src:
-                copyfileobj(src, os.fdopen(dst, 'wb'))
-                return {'dataType': "file", 'file': ntpath.basename(filename),  'filename': ntpath.basename(path)}
 
     def artifacts(self, report):
         artifacts = []
-        relations = []
         tags = report.get('tags')
-        src = str(self.data_type)
         if len(tags) != 0:
            for tag in tags:
                if self.service == "search_hash":
@@ -137,26 +126,19 @@ class AutoFocusAnalyzer(Analyzer):
 
                tag_class_id = tag.get('tag_class_id')
                if tag_class_id == 1:
-                  dst = 'threat_actor'
                   observable = {'dataType': 'threat_actor', 'data': tag_name}
                elif tag_class_id == 2:
-                  dst = 'campaign'
                   observable = {'dataType': 'campaign', 'data': tag_name}
                elif tag_class_id == 3:
-                  dst = 'malware_family'
                   observable = {'dataType': 'malware_family', 'data': tag_name}
                elif tag_class_id == 4:
                   if tag_name.find("CVE") >= 0:
-                     dst = 'vulnerability'
                      observable = {'dataType': 'vulnerability', 'data': tag_name}
                   else:
-                     dst = 'exploit'
                      observable = {'dataType': 'exploit', 'data': tag_name}
                else:
-                  dst = 'attack_pattern'
                   observable = {'dataType': 'attack_pattern', 'data': tag_name}
                artifacts.append(observable)
-               relations.append(dst)
 
         if self.service == "search_hash":
             analysis = report.get('analysis')
@@ -170,40 +152,35 @@ class AutoFocusAnalyzer(Analyzer):
                     if len(malware_sig) != 0:
                         for sig in malware_sig:
                             sig_name = sig.get('name')
-                            dst = 'malware_family'
                             observable_sig = {'dataType': 'malware_family', 'data': sig_name}
                             artifacts.append(observable_sig)
                     if len(dns_sig) != 0:
                         for domain in dns_sig:
                             dns_name = domain.get('domain')
-                            dst = 'domain'
                             observable_dns = {'dataType': 'domain', 'data': dns_name}
                             artifacts.append(observable_dns)
                     if len(url_cat) != 0:
                         for url in url_cat:
                             url_name = url.get('url')
-                            dst = 'url'
                             observable_url = {'dataType': 'url', 'data': url_name}
                             artifacts.append(observable_url)
-                    relations.append(dst)
-        observables = {'src': src, 'dst': relations}
-
-        G = nx.DiGraph()
-        #Anyadir atributos al nodo src
-        G.add_node(observables['src'])
-
-        #Anyadir atributos al nodo dst
-
-        obs_dst = observables['dst']
-        for o in obs_dst:
-            #Anyadir atributos a las aristas
-            G.add_edge(observables['src'], o)
-
-       #Crear fichero con el subgrafo
-        nx.write_gml(G, "/tmp/subgraph.gml")
-        path = "/tmp/subgraph.gml"
-        observable_subgraph = self.createArtifactFile(path)
-        artifacts.append(observable_subgraph)
+        if self.service == "search_ioc":
+            relations = report.get('relations')
+            if len(relations) != 0:
+                for relation in relations:
+                    if "metadata" in relation:
+                        hash_sha256 = relation.get('metadata').get('sha256')
+                        hash_md5 = relation.get('metadata').get('md5')
+                        hash_sha1 = relation.get('metadata').get('sha1')
+                        if hash_sha256 != None:
+                            observable_hash_sha256 = {'dataType': 'hash', 'data': hash_sha256}
+                            artifacts.append(observable_hash_sha256)
+                        if hash_md5 != None:
+                            observable_hash_md5 = {'dataType': 'hash', 'data': hash_md5}
+                            artifacts.append(observable_hash_md5)
+                        if hash_sha1 != None:
+                            observable_hash_sha1 = {'dataType': 'hash', 'data': hash_sha1}
+                            artifacts.append(observable_hash_sha1)
 
         return artifacts
 

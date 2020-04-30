@@ -1,0 +1,31 @@
+{
+  "name": "VirusTotal_GetReport",
+  "version": "1.0",
+  "author": "Maria Garcia",
+  "url": "https://github.com/mariagvaliente/cortex-analyzers",
+  "license": "AGPL-V3",
+  "description": "Get the latest VirusTotal report for a file, hash, domain or an IP address.",
+  "dataTypeList": ["file", "hash", "domain","fqdn", "ip", "url"],
+  "command": "VirusTotal/Virustotal_Analyzer.py",
+  "baseConfig": "VirusTotal",
+  "config": {
+    "service": "get"
+  },
+  "configurationItems": [
+    {
+      "name": "key",
+      "description": "API key for Virustotal",
+      "type": "string",
+      "multi": false,
+      "required": true
+    },
+    {
+      "name": "polling_interval",
+      "description": "Define time interval between two requests attempts for the report",
+      "type": "number",
+      "multi": false,
+      "required": false,
+      "defaultValue": 60
+    }
+  ]
+}
