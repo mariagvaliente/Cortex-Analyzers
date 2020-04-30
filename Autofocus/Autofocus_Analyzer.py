@@ -179,15 +179,10 @@ class AutoFocusAnalyzer(Analyzer):
                                ips.append(regex_dns)
                 for i in platforms:
                     http_platform = http_activity.get(i)
-                    print(http_platform)
                     if http_platform != None:
                         for h in http_platform:
                             line_http = h.get('line')
-                            print("La linea es")
-                            print(line_http)
                             regex_http = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', line_http)
-                            print("Regex es")
-                            print(regex_http)
                             if regex_http is not None and regex_http not in ips:
                                ips.append(regex_http)
                 if len(ips) != 0:
