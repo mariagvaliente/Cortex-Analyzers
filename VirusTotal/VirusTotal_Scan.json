@@ -6,7 +6,6 @@
   "license": "AGPL-V3",
   "description": "Use VirusTotal to scan a file or URL.",
   "dataTypeList": ["file", "url"],
-  "command": "VirusTotal/Virustotal_Analyzer.py",
   "baseConfig": "VirusTotal",
   "config": {
     "service": "scan"
@@ -28,4 +27,5 @@
       "defaultValue": 60
     }
   ],
+  "command": "VirusTotal/Virustotal_Analyzer.py"
 }

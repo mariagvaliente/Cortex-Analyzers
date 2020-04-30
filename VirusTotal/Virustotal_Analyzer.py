@@ -89,53 +89,86 @@ class VirusTotalAnalyzer(Analyzer):
             if "scans" in raw:
                 result["scans"] = len(raw["scans"])
                 value = "{}/{}".format(result["positives"], result["total"])
+                operation = int(result["positives"])/int(result["total"])
                 if result["positives"] == 0:
-                    level = "safe"
+                    level = "info"
+                    score = "1"
                 elif result["positives"] < 5:
                     level = "suspicious"
+                    score = "3"
                 else:
-                    level = "malicious"
-
+                    if operation < 0.5:
+                       level = "malicious"
+                       score = "4"
+                    else:
+                       operation = "malicious"
+                       score = "5"
             if "resolutions" in raw:
                 result["resolutions"] = len(raw["resolutions"])
                 value = "{} resolution(s)".format(result["resolutions"])
                 if result["resolutions"] == 0:
-                    level = "safe"
+                    level = "info"
+                    score = "1"
                 elif result["resolutions"] < 5:
                     level = "suspicious"
+                    score = "3"
                 else:
                     level = "malicious"
+                    score = "5"
             if "detected_urls" in raw:
                 result["detected_urls"] = len(raw["detected_urls"])
                 value = "{} detected_url(s)".format(result["detected_urls"])
                 if result["detected_urls"] == 0:
-                    level = "safe"
+                    level = "info"
+                    score = "1"
                 elif result["detected_urls"] < 5:
                     level = "suspicious"
+                    score = "3"
                 else:
                     level = "malicious"
-
+                    score = "5"
             if "detected_downloaded_samples" in raw:
-                result["detected_downloaded_samples"] = len(
-                    raw["detected_downloaded_samples"])
+                result["detected_downloaded_samples"] = len(raw["detected_downloaded_samples"])
+                if result["detected_downloaded_samples"] == 0:
+                    level = "info"
+                    score = "1"
+                elif result["detected_downloaded_samples"] < 5:
+                    level = "suspicious"
+                    score = "3"
+                else:
+                    level = "malicious"
+                    score = "5"
 
         if self.service == "scan":
             if "scans" in raw:
                 result["scans"] = len(raw["scans"])
                 value = "{}/{}".format(result["positives"], result["total"])
+                operation = int(result["positives"])/int(result["total"])
                 if result["positives"] == 0:
-                    level = "safe"
+                    level = "info"
+                    score = "1"
                 elif result["positives"] < 5:
                     level = "suspicious"
+                    score = "3"
                 else:
-                    level = "malicious"
+                    if operation < 0.5:
+                       level = "malicious"
+                       score = "4"
+                    else:
+                       level = "malicious"
+                       score = "5"
 
         taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
+        taxonomies.append(self.build_taxonomy(level, namespace, "Score", score))
         return {"taxonomies": taxonomies}
 
     def artifacts(self, report):
       artifacts = []
       detected_urls = report.get('detected_urls')
+      detected_communicating_samples = report.get('detected_communicating_samples')
+      detected_downloaded_samples = report.get('detected_downloaded_samples')
+      detected_referrer_samples = report.get('detected_referrer_samples')
+      resolutions = report.get('resolutions')
       if detected_urls != None:
          for detected_url in report.get('detected_urls'):
              observable_url = {'dataType': 'url', 'data': detected_url['url']}
@@ -154,12 +187,12 @@ class VirusTotalAnalyzer(Analyzer):
              artifacts.append(observable_referrer_hash)
       if resolutions != None:
          for resolution in report.get('resolutions'):
-         	 if self.data_type == 'ip':
+             if self.data_type == 'ip':
                 observable_domain = {'dataType': 'domain', 'data': resolution['hostname']}
                 artifacts.append(observable_domain)
              elif self.data_type == 'domain':
                 observable_ip = {'dataType': 'ip', 'data': resolution['ip_address']}
-                artifacts.append(observable_ip)                                     
+                artifacts.append(observable_ip)
 
       return artifacts
 
