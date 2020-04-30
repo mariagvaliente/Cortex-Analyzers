@@ -5,7 +5,7 @@ from cortexutils.analyzer import Analyzer
 import requests
 import json
 from datetime import datetime
-
+import re
 AutoFocusAPI.api_key = "Your API key here"
 
 # Main analyzer
@@ -22,13 +22,13 @@ class AutoFocusAnalyzer(Analyzer):
             self.headers = {"apiKey": self.autofocus_key, "Content-Type": "application/json"}
         else:
             self.headers = {"Content-Type": "application/json"}
-            self.data = {"apiKey": self.autofocus_key, "coverage": "true", "sections": ["coverage"]}
+            self.data = {"apiKey": self.autofocus_key, "coverage": "true", "sections": ["coverage", "http", "dns"]}
 
     def get_request(self):
         indicator_type_initial = str(self.data_type)
         if indicator_type_initial == "ip":
            indicator_type = "ipv4_address"
-           field = "sample.tasks.http"
+           field = "alias.domain"
         elif indicator_type_initial == "domain":
            indicator_type = "domain"
            field = "sample.tasks.dns"
@@ -47,6 +47,7 @@ class AutoFocusAnalyzer(Analyzer):
         for sample in AFSample.search(search):
             relations.append({'metadata': sample.serialize(),'tags': [tag.serialize() for tag in sample.__getattribute__('tags')]})
         res = {'metadata': indicator, 'tags': tags, 'relations': relations}
+
         return res
 
 
@@ -116,6 +117,7 @@ class AutoFocusAnalyzer(Analyzer):
 
     def artifacts(self, report):
         artifacts = []
+        ips = []
         tags = report.get('tags')
         if len(tags) != 0:
            for tag in tags:
@@ -164,6 +166,37 @@ class AutoFocusAnalyzer(Analyzer):
                             url_name = url.get('url')
                             observable_url = {'dataType': 'url', 'data': url_name}
                             artifacts.append(observable_url)
+                platforms = analysis.get('platforms')
+                dns_activity = analysis.get('dns')
+                http_activity = analysis.get('http')
+                for p in platforms:
+                    dns_platform = dns_activity.get(p)
+                    if dns_platform != None:
+                        for d in dns_platform:
+                            line_dns = d.get('line')
+                            regex_dns = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', line_dns)
+                            if regex_dns is not None and regex_dns not in ips:
+                               ips.append(regex_dns)
+                for i in platforms:
+                    http_platform = http_activity.get(i)
+                    print(http_platform)
+                    if http_platform != None:
+                        for h in http_platform:
+                            line_http = h.get('line')
+                            print("La linea es")
+                            print(line_http)
+                            regex_http = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', line_http)
+                            print("Regex es")
+                            print(regex_http)
+                            if regex_http is not None and regex_http not in ips:
+                               ips.append(regex_http)
+                if len(ips) != 0:
+                   for ip in ips:
+                       if len(ip) != 0:
+                          dir_ip = ip[0]
+                          observable_ip = {'dataType': 'ip', 'data': dir_ip}
+                          artifacts.append(observable_ip)
+
         if self.service == "search_ioc":
             relations = report.get('relations')
             if len(relations) != 0:
