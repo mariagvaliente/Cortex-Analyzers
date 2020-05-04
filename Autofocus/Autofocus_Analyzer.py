@@ -32,9 +32,6 @@ class AutoFocusAnalyzer(Analyzer):
         elif indicator_type_initial == "domain":
            indicator_type = "domain"
            field = "sample.tasks.dns"
-        elif indicator_type_initial == "url":
-           indicator_type = "url"
-           field = "sample.tasks.http"
         indicator_value = str(self.getData())
         self.params = {"indicatorType": indicator_type, "indicatorValue": indicator_value, "includeTags": "true"}
         url = str(self.basic_url)
@@ -140,7 +137,8 @@ class AutoFocusAnalyzer(Analyzer):
                      observable = {'dataType': 'exploit', 'data': tag_name}
                else:
                   observable = {'dataType': 'attack_pattern', 'data': tag_name}
-               artifacts.append(observable)
+               if observable not in artifacts:
+                  artifacts.append(observable)
 
         if self.service == "search_hash":
             analysis = report.get('analysis')
@@ -155,42 +153,45 @@ class AutoFocusAnalyzer(Analyzer):
                         for sig in malware_sig:
                             sig_name = sig.get('name')
                             observable_sig = {'dataType': 'malware_family', 'data': sig_name}
-                            artifacts.append(observable_sig)
+                            if observable_sig not in artifacts:
+                               artifacts.append(observable_sig)
                     if len(dns_sig) != 0:
                         for domain in dns_sig:
                             dns_name = domain.get('domain')
                             observable_dns = {'dataType': 'domain', 'data': dns_name}
-                            artifacts.append(observable_dns)
+                            if observable_dns not in artifacts:
+                               artifacts.append(observable_dns)
                     if len(url_cat) != 0:
                         for url in url_cat:
                             url_name = url.get('url')
-                            observable_url = {'dataType': 'url', 'data': url_name}
-                            artifacts.append(observable_url)
-                platforms = analysis.get('platforms')
-                dns_activity = analysis.get('dns')
-                http_activity = analysis.get('http')
-                for p in platforms:
-                    dns_platform = dns_activity.get(p)
-                    if dns_platform != None:
-                        for d in dns_platform:
-                            line_dns = d.get('line')
-                            regex_dns = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', line_dns)
-                            if regex_dns is not None and regex_dns not in ips:
-                               ips.append(regex_dns)
-                for i in platforms:
-                    http_platform = http_activity.get(i)
-                    if http_platform != None:
-                        for h in http_platform:
-                            line_http = h.get('line')
-                            regex_http = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', line_http)
-                            if regex_http is not None and regex_http not in ips:
-                               ips.append(regex_http)
-                if len(ips) != 0:
-                   for ip in ips:
-                       if len(ip) != 0:
-                          dir_ip = ip[0]
-                          observable_ip = {'dataType': 'ip', 'data': dir_ip}
-                          artifacts.append(observable_ip)
+                            observable_url = {'dataType': 'domain', 'data': url_name}
+                            if observable_url not in artifacts:
+                               artifacts.append(observable_url)
+                    platforms = analysis.get('platforms')
+                    dns_activity = analysis.get('dns')
+                    http_activity = analysis.get('http')
+                    for p in platforms:
+                        dns_platform = dns_activity.get(p)
+                        if dns_platform != None:
+                           for d in dns_platform:
+                               line_dns = d.get('line')
+                               regex_dns = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', line_dns)
+                               if regex_dns is not None and regex_dns not in ips:
+                                  ips.append(regex_dns)
+                    for i in platforms:
+                        http_platform = http_activity.get(i)
+                        if http_platform != None:
+                           for h in http_platform:
+                               line_http = h.get('line')
+                               regex_http = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', line_http)
+                               if regex_http is not None and regex_http not in ips:
+                                  ips.append(regex_http)
+                    if len(ips) != 0:
+                       for ip in ips:
+                           if len(ip) != 0:
+                              dir_ip = ip[0]
+                              observable_ip = {'dataType': 'ip', 'data': dir_ip}
+                              artifacts.append(observable_ip)
 
         if self.service == "search_ioc":
             relations = report.get('relations')
@@ -202,13 +203,16 @@ class AutoFocusAnalyzer(Analyzer):
                         hash_sha1 = relation.get('metadata').get('sha1')
                         if hash_sha256 != None:
                             observable_hash_sha256 = {'dataType': 'hash', 'data': hash_sha256}
-                            artifacts.append(observable_hash_sha256)
+                            if observable_hash_sha256 not in artifacts:
+                               artifacts.append(observable_hash_sha256)
                         if hash_md5 != None:
                             observable_hash_md5 = {'dataType': 'hash', 'data': hash_md5}
-                            artifacts.append(observable_hash_md5)
+                            if observable_hash_md5 not in artifacts:
+                               artifacts.append(observable_hash_md5)
                         if hash_sha1 != None:
                             observable_hash_sha1 = {'dataType': 'hash', 'data': hash_sha1}
-                            artifacts.append(observable_hash_sha1)
+                            if observable_hash_sha1 not in artifacts:
+                               artifacts.append(observable_hash_sha1)
 
         return artifacts
 

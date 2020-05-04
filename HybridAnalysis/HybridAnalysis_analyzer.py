@@ -86,28 +86,33 @@ class HybridAnalysisAnalyzer(Analyzer):
                  observable_vx = {'dataType': 'vulnerability', 'data': vx}
               else:
                  observable_vx = {'dataType': 'malware-family', 'data': vx}
-              artifacts.append(observable_vx)
+              if observable_vx not in artifacts:
+                 artifacts.append(observable_vx)
            mitre_attcks = report.get('mitre_attcks')
            if len(mitre_attcks) != 0:
               for attack in mitre_attcks:
                   technique = attack.get('technique')
                   observable_mittre = {'dataType': 'attack_pattern', 'data': technique}
-                  artifacts.append(observable_mittre)
+                  if observable_mittre not in artifacts:
+                     artifacts.append(observable_mittre)
            compromised_hosts = report.get('compromised_hosts')
            if len(compromised_hosts) != 0:
               for host in compromised_hosts:
                   observable_compromised_hosts = {'dataType': 'ip', 'data': host}
-                  artifacts.append(observable_compromised_hosts)
+                  if observable_compromised_hosts not in artifacts:
+                     artifacts.append(observable_compromised_hosts)
            hosts = report.get('hosts')
            if len(hosts) != 0:
               for host in hosts:
                   observable_hosts = {'dataType': 'ip', 'data': host}
-                  artifacts.append(observable_hosts)
+                  if observable_hosts not in artifacts:
+                     artifacts.append(observable_hosts)
            domains = report.get('domains')
            if len(domains) != 0:
               for domain in domains:
                   observable_domains = {'dataType': 'domain', 'data': domain}
-                  artifacts.append(observable_domains)
+                  if observable_domains not in artifacts:
+                     artifacts.append(observable_domains)
            extracted_files = report.get('extracted_files')
            if len(extracted_files) != 0:
               for file in extracted_files:
@@ -119,10 +124,14 @@ class HybridAnalysisAnalyzer(Analyzer):
                   observable_hash_sha1 = {'dataType': 'hash', 'data': hash_sha1}
                   observable_hash_sha256 = {'dataType': 'hash', 'data': hash_sha256}
                   observable_hash_md5 = {'dataType': 'hash', 'data': hash_md5}
-                  artifacts.append(observable_files)
-                  artifacts.append(observable_hash_sha1)
-                  artifacts.append(observable_hash_sha256)
-                  artifacts.append(observable_hash_md5)
+                  if observable_files not in artifacts:
+                     artifacts.append(observable_files)
+                  if observable_hash_sha1 not in artifacts:
+                     artifacts.append(observable_hash_sha1)
+                  if observable_hash_sha256 not in artifacts:
+                     artifacts.append(observable_hash_sha256)
+                  if observable_hash_md5 not in artifacts:
+                     artifacts.append(observable_hash_md5)
         return artifacts
 
 
@@ -146,14 +155,11 @@ class HybridAnalysisAnalyzer(Analyzer):
                 indicator_type = 'host'
             indicator_value = str(query_data)
             self.data = {indicator_type: indicator_value}
-            print(self.data)
-            print(self.headers)
 
             url = str(self.basic_url) + str(query_url)
 
             response = requests.post(url, data=self.data, headers=self.headers)
             res_search = response.json()
-            print(res_search)
 
             if indicator_type == 'hash':
                 self.report(res_search[0])

@@ -14,7 +14,8 @@ class UrlscanAnalyzer(Analyzer):
     def get_scan(self):
         data = self.getData()
         indicator_value = str(data)
-        response = requests.get('https://urlscan.io/api/v1/search?q=domain:{}'.format(indicator_value),headers=self.headers)
+        indicator_type = str(self.data_type)
+        response = requests.get('https://urlscan.io/api/v1/search?q={}:{}'.format(indicator_type, indicator_value),headers=self.headers)
         if response.status_code == 200:
             response_json = response.json()
             response_results = response_json.get('results')
@@ -94,22 +95,29 @@ class UrlscanAnalyzer(Analyzer):
 
     def artifacts(self, report):
         artifacts = []
+        indicator_type = str(self.data_type)
         if report.get('lists') != None:
            ips = report.get('lists').get('ips')
-           domains = report.get('lists').get('domains')
+           if indicator_type != "ip":
+              domains = report.get('lists').get('domains')
+           else:
+              domains = report.get('lists').get('linkDomains')
            hashes = report.get('lists').get('hashes')
            if len(ips) != 0:
               for ip in ips:
                   observable_ip = {'dataType': 'ip', 'data': ip}
-                  artifacts.append(observable_ip)
+                  if observable_ip not in artifacts:
+                     artifacts.append(observable_ip)
            if len(domains) != 0:
               for domain in domains:
                   observable_domain = {'dataType': 'domain', 'data': domain}
-                  artifacts.append(observable_domain)
+                  if observable_domain not in artifacts:
+                     artifacts.append(observable_domain)
            if len(hashes) != 0:
               for hash in hashes:
                   observable_hash = {'dataType': 'hash', 'data': hash}
-                  artifacts.append(observable_hash)
+                  if observable_hash not in artifacts:
+                     artifacts.append(observable_hash)
 
         return artifacts
 

@@ -4,8 +4,8 @@
   "license": "AGPL-V3",
   "url": "https://github.com/mariagvaliente/cortex-analyzers",
   "version": "1.0",
-  "description": "Scan domains on urlscan.io",
-  "dataTypeList": ["domain", "fqdn"],
+  "description": "Scan iocs on urlscan.io",
+  "dataTypeList": ["domain", "fqdn", "ip", "hash"],
   "command": "Urlscan/Urlscan_Analyzer.py",
   "baseConfig": "Urlscan.io",
   "configurationItems": [
