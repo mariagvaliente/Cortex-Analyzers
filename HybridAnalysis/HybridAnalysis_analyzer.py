@@ -155,11 +155,14 @@ class HybridAnalysisAnalyzer(Analyzer):
                 indicator_type = 'host'
             indicator_value = str(query_data)
             self.data = {indicator_type: indicator_value}
+            print(self.data)
+            print(self.headers)
 
             url = str(self.basic_url) + str(query_url)
 
             response = requests.post(url, data=self.data, headers=self.headers)
             res_search = response.json()
+            print(res_search)
 
             if indicator_type == 'hash':
                 self.report(res_search[0])

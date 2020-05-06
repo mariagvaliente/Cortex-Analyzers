@@ -31,6 +31,3 @@ class EmailRep():
             raise EmailRepException(reason)
 
         return json
-
-
-   

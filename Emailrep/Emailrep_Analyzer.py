@@ -75,7 +75,7 @@ class EmailRepAnalyzer(Analyzer):
         )
 
         return {"taxonomies": taxonomies}
-        
+
 
     def run(self):
         data = self.get_data()
