@@ -29,6 +29,8 @@ class AutoFocusAnalyzer(Analyzer):
         if indicator_type_initial == "ip":
            indicator_type = "ipv4_address"
            field = "alias.domain"
+           #field = "sample.tasks.dns"
+           #field = "sample.tasks.http"
         elif indicator_type_initial == "domain":
            indicator_type = "domain"
            field = "sample.tasks.dns"
@@ -55,7 +57,10 @@ class AutoFocusAnalyzer(Analyzer):
         url = url_analysis + indicator_value + query
         data = json.dumps(self.data)
         r = requests.post(url, data=data, headers=self.headers)
-        res_search = r.json()
+        if (r.status_code == 200):
+           res_search = r.json()
+        else:
+           res_search = {}
         return res_search
 
     def execute_autofocus_service(self):
@@ -75,6 +80,7 @@ class AutoFocusAnalyzer(Analyzer):
         if "metadata" in raw:
             if self.service == "search_hash":
                 verdict = raw.get('metadata').get('verdict')
+                first_seen = raw.get('metadata').get('create_date')
                 last_seen = raw.get('metadata').get('finish_date')
             else:
                 verdict_dict = raw.get('metadata').get('latestPanVerdicts')
@@ -84,6 +90,14 @@ class AutoFocusAnalyzer(Analyzer):
                     verdict = verdict_dict.get('PAN_DB')
                 else:
                     verdict = None
+                first_seen_timestamp = raw.get('metadata').get('firstSeenTsGlobal')
+                if first_seen_timestamp != None:
+                    first_seen_timestamp_str = str(first_seen_timestamp)
+                    first_seen_timestamp_cut = first_seen_timestamp_str[:-3]
+                    first_seen_timestamp_result = int(first_seen_timestamp_cut)
+                    first_seen = datetime.fromtimestamp(first_seen_timestamp_result).isoformat()
+                else:
+                    first_seen = "Not found"
                 last_seen_timestamp = raw.get('metadata').get('lastSeenTsGlobal')
                 if last_seen_timestamp != None:
                     last_seen_timestamp_str = str(last_seen_timestamp)
@@ -105,6 +119,7 @@ class AutoFocusAnalyzer(Analyzer):
                 value = "5"
                 level = "malicious"
             taxonomies.append(self.build_taxonomy(level,namespace,"Score",value))
+            taxonomies.append(self.build_taxonomy(level,namespace,"First_seen",first_seen))
             taxonomies.append(self.build_taxonomy(level,namespace,"Last_seen",last_seen))
         else:
             value = "Not found"
@@ -141,6 +156,7 @@ class AutoFocusAnalyzer(Analyzer):
                   artifacts.append(observable)
 
         if self.service == "search_hash":
+          try:
             analysis = report.get('analysis')
             if analysis != None:
                 coverage = analysis.get('coverage')
@@ -167,31 +183,37 @@ class AutoFocusAnalyzer(Analyzer):
                             observable_url = {'dataType': 'domain', 'data': url_name}
                             if observable_url not in artifacts:
                                artifacts.append(observable_url)
-                    platforms = analysis.get('platforms')
-                    dns_activity = analysis.get('dns')
-                    http_activity = analysis.get('http')
-                    for p in platforms:
-                        dns_platform = dns_activity.get(p)
-                        if dns_platform != None:
-                           for d in dns_platform:
-                               line_dns = d.get('line')
-                               regex_dns = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', line_dns)
-                               if regex_dns is not None and regex_dns not in ips:
-                                  ips.append(regex_dns)
-                    for i in platforms:
-                        http_platform = http_activity.get(i)
-                        if http_platform != None:
-                           for h in http_platform:
-                               line_http = h.get('line')
-                               regex_http = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', line_http)
-                               if regex_http is not None and regex_http not in ips:
-                                  ips.append(regex_http)
+                    analysis_dns = analysis.get('dns')
+                    if analysis_dns != None:
+                        for platform in analysis_dns.keys():
+                            print(platform)
+                            if platform != None:
+                               dns_platform = analysis_dns.get(platform)
+                               for d in dns_platform:
+                                 line_dns = d.get('line')
+                                 regex_dns = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', line_dns)
+                                 if regex_dns is not None and regex_dns not in ips:
+                                    ips.append(regex_dns)
+                    analysis_http = analysis.get('http')
+                    if analysis_http != None:
+                        for platform in analysis_http.keys():
+                            print(platform)
+                            if platform != None:
+                               http_platform = analysis_http.get(platform)
+                               for h in http_platform:
+                                 line_http = h.get('line')
+                                 regex_http = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', line_http)
+                                 if regex_http is not None and regex_http not in ips:
+                                    ips.append(regex_http)
                     if len(ips) != 0:
                        for ip in ips:
                            if len(ip) != 0:
                               dir_ip = ip[0]
                               observable_ip = {'dataType': 'ip', 'data': dir_ip}
                               artifacts.append(observable_ip)
+          except Exception as e:
+            print(e)
+            pass
 
         if self.service == "search_ioc":
             relations = report.get('relations')
@@ -232,7 +254,8 @@ class AutoFocusAnalyzer(Analyzer):
             self.unexpectedError(e)
         except AFClientError as e: # Client error
             self.unexpectedError(e)
-        except Exception: # Unknown error
+        except Exception as e: # Unknown error
+            print(e)
             self.unexpectedError("Unknown error while running Autofocus analyzer")
 
 if __name__ == '__main__':

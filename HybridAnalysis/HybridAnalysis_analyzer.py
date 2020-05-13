@@ -12,22 +12,22 @@ class HybridAnalysisAnalyzer(Analyzer):
     def __init__(self):
         Analyzer.__init__(self)
         self.api_key = self.get_param('config.key', None, 'Falcon Sandbox API key is missing')
-
         self.basic_url = 'https://www.hybrid-analysis.com/api/v2/search/'
         self.headers = {'api-key': self.api_key,'user-agent':'Falcon Sandbox'}
 
     def summary(self, raw):
         taxonomies = []
-
+        dates = []
+        verdict = raw.get('verdict')
+        threat_score = raw.get('threat_score')
+        submissions = raw.get('submissions')
+        tags = raw.get('tags')
+        av_detect = raw.get('av_detect')
         # default values
         level = "info"
         namespace = "HybridAnalysis"
-        verdict = raw.get('verdict')
-        threat_score = raw.get('threat_score')
-        last_seen = raw.get('analysis_start_time')
-        tags = raw.get('tags')
-        av_detect = raw.get('av_detect')
-
+        
+        # SCORE
         if verdict == 'malicious':
            level = 'malicious'
         elif verdict == 'suspicious':
@@ -38,7 +38,7 @@ class HybridAnalysisAnalyzer(Analyzer):
            level = 'info'
         if threat_score == None:
            if av_detect != None:
-              if 20 > int(av_detect) >= 1:
+              if 20 > int(av_detect) >= 0:
                  score = '2'
                  level = 'info'
               elif 60 > int(av_detect) >= 20:
@@ -67,14 +67,28 @@ class HybridAnalysisAnalyzer(Analyzer):
               score = '4'
            elif 100 >= int(threat_score) >= 80:
               score = '5'
-        if last_seen == None:
-           last_seen = 'Not found'
+        taxonomies.append(self.build_taxonomy(level, namespace, "Score", score))
+        
+        # FIRST AND LAST SEEN
+        for submission in submissions:
+              dates.append(submission['created_at'])
+        if len(dates) != 0:
+           dates_sort = sorted(dates)
+           first_seen = dates_sort[0]
+           last_seen = dates_sort[-1]
+           if first_seen != None:
+             taxonomies.append(self.build_taxonomy(level, namespace, "First_seen", first_seen))
+           else:
+             taxonomies.append(self.build_taxonomy(level, namespace, "First_seen", "Not found"))           
+           if last_seen != None:
+             taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
+           else:
+             taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", "Not found"))               
+              
+        # TAGS
         if len(tags) != 0:
            for tag in tags:
                taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag))
-        taxonomies.append(self.build_taxonomy(level, namespace, "Score", score))
-        taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
-
         return {"taxonomies": taxonomies}
 
     def artifacts(self, report):
@@ -155,17 +169,17 @@ class HybridAnalysisAnalyzer(Analyzer):
                 indicator_type = 'host'
             indicator_value = str(query_data)
             self.data = {indicator_type: indicator_value}
-            print(self.data)
-            print(self.headers)
 
             url = str(self.basic_url) + str(query_url)
 
             response = requests.post(url, data=self.data, headers=self.headers)
             res_search = response.json()
-            print(res_search)
-
+            
             if indicator_type == 'hash':
-                self.report(res_search[0])
+                if len(res_search) != 0:
+                   self.report(res_search[0])
+                else:
+                   self.error("Unknown sample in HybridAnalysis")
             else:
                 url_report = 'https://www.hybrid-analysis.com/api/v2/report/'
                 query = '/summary'

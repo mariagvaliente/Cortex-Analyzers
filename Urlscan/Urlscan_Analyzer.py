@@ -3,8 +3,11 @@ from cortexutils.analyzer import Analyzer
 import requests
 import datetime
 from dateutil.parser import parse
+#List for collecting the dates of each result
+dates = []
 
 class UrlscanAnalyzer(Analyzer):
+
     def __init__(self):
         Analyzer.__init__(self)
         self.api_key = self.get_param('config.key', None, 'Missing URLScan API key')
@@ -19,9 +22,16 @@ class UrlscanAnalyzer(Analyzer):
         if response.status_code == 200:
             response_json = response.json()
             response_results = response_json.get('results')
-            #ID Scan
-            id_url = response_results[0].get('_id')
-            return id_url
+            if len(response_results) == 0:
+                self.error("Unknown sample in Urlscan.io")
+            else:
+                for r in response_results:
+                    task = r.get('task')
+                    time = task.get('time')
+                    dates.append(time)
+                #ID scan 
+                id_url = response_results[0].get('_id')
+                return id_url
         else:
             self.error("urlscan.io returns %s" % response.status_code)
 
@@ -42,26 +52,11 @@ class UrlscanAnalyzer(Analyzer):
         score = raw["verdicts"]["overall"]["score"]
         votesBenign = raw["verdicts"]["community"]["votesBenign"]
         tags = raw["verdicts"]["overall"]["tags"]
-        dates = []
-        data = raw.get('data')
-        requests = data.get('requests')
-        for request in requests:
-            response = request.get('response')
-            response_final = response.get('response')
-            headers = response_final.get('headers')
-            if headers != None:
-               last_seen = headers.get('Last-Modified')
-               if last_seen != None:
-                  last_seen_parsed = parse(last_seen).isoformat()
-                  dates.append(last_seen_parsed)
-            else:
-               date = "Not found"
-        if len(dates) != 0:
-           dates_sort = sorted(dates)
-           date = dates_sort[-1]
-        else:
-           date = "Not found"
-
+        #TAGS
+        if len(tags) != 0:
+           for tag in tags:
+               taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag))        
+        #SCORE
         if malicious:
            level = 'malicious'
         elif score > 0:
@@ -85,12 +80,13 @@ class UrlscanAnalyzer(Analyzer):
               my_score = '4'
            elif 100 >= int(score) >= 80:
               my_score = '5'
-
-        if len(tags) != 0:
-           for tag in tags:
-               taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag))
         taxonomies.append(self.build_taxonomy(level, namespace, "Score", my_score))
-        taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", date))
+        #FIRST AND LAST SEEN
+        if len(dates) != 0:
+           first_seen = dates[-1]
+           taxonomies.append(self.build_taxonomy(level, namespace, "First_seen", first_seen))
+           last_seen = dates[0]
+           taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
         return {"taxonomies": taxonomies}
 
     def artifacts(self, report):
@@ -126,8 +122,9 @@ class UrlscanAnalyzer(Analyzer):
         try:
             records = self.get_results()
             self.report(records)
-
-        except Exception: # Unknown error
+            
+        except Exception as e: 
+            print(e)
             self.unexpectedError("Unknown error while running Urlscan analyzer")
 
 
