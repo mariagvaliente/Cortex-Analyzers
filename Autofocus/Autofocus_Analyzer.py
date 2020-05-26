@@ -28,8 +28,8 @@ class AutoFocusAnalyzer(Analyzer):
         indicator_type_initial = str(self.data_type)
         if indicator_type_initial == "ip":
            indicator_type = "ipv4_address"
-           field = "alias.domain"
-           #field = "sample.tasks.dns"
+           #field = "alias.domain"
+           field = "sample.tasks.dns"
            #field = "sample.tasks.http"
         elif indicator_type_initial == "domain":
            indicator_type = "domain"
@@ -38,16 +38,18 @@ class AutoFocusAnalyzer(Analyzer):
         self.params = {"indicatorType": indicator_type, "indicatorValue": indicator_value, "includeTags": "true"}
         url = str(self.basic_url)
         r = requests.get(url, params=self.params, headers=self.headers)
-        res_search = r.json()
-        indicator = res_search.get('indicator')
-        tags = res_search.get('tags')
-        relations = []
-        search = {"operator":"all","children":[{"field":field,"operator":"contains","value":indicator_value}]}
-        for sample in AFSample.search(search):
-            relations.append({'metadata': sample.serialize(),'tags': [tag.serialize() for tag in sample.__getattribute__('tags')]})
-        res = {'metadata': indicator, 'tags': tags, 'relations': relations}
-
-        return res
+        if r.status_code == 200:
+           res_search = r.json()
+           indicator = res_search.get('indicator')
+           tags = res_search.get('tags')
+           relations = []
+           search = {"operator":"all","children":[{"field":field,"operator":"contains","value":indicator_value}]}
+           for sample in AFSample.search(search):
+               relations.append({'metadata': sample.serialize(),'tags': [tag.serialize() for tag in sample.__getattribute__('tags')]})
+           res = {'metadata': indicator, 'tags': tags, 'relations': relations}
+           return res
+        else:
+           self.error("Autofocus returns %s" % response.status_code)
 
 
     def get_analysis(self):
@@ -73,15 +75,36 @@ class AutoFocusAnalyzer(Analyzer):
 
     def summary(self, raw):
         taxonomies = []
-        level = "info"
         namespace = "PaloAltoNetworks"
-        value = "1"
 
         if "metadata" in raw:
             if self.service == "search_hash":
                 verdict = raw.get('metadata').get('verdict')
+                if verdict == "greyware":
+                    value = "3"
+                    level = "suspicious"
+                    taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict))
+                elif verdict == "phising":
+                    value = "4"
+                    level = "malicious"
+                    taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict))
+                elif verdict == "malware":
+                    value = "5"
+                    level = "malicious"
+                    taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict))
+                else:
+                    value = "0"
+                    level = "safe"
                 first_seen = raw.get('metadata').get('create_date')
+                if first_seen != None:
+                    taxonomies.append(self.build_taxonomy(level,namespace,"First_seen",first_seen))
                 last_seen = raw.get('metadata').get('finish_date')
+                if last_seen != None:
+                    taxonomies.append(self.build_taxonomy(level,namespace,"Last_seen",last_seen))
+                regions = raw.get('metadata').get('regions')
+                if len(regions) != 0:
+                   for r in regions:
+                       taxonomies.append(self.build_taxonomy(level,namespace,"Region",r.upper()))
             else:
                 verdict_dict = raw.get('metadata').get('latestPanVerdicts')
                 if verdict_dict.get('WF_SAMPLE') != None:
@@ -90,40 +113,38 @@ class AutoFocusAnalyzer(Analyzer):
                     verdict = verdict_dict.get('PAN_DB')
                 else:
                     verdict = None
+                if verdict == "GREYWARE":
+                    value = "3"
+                    level = "suspicious"
+                    taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict.lower()))
+                elif verdict == "PHISING":
+                    value = "4"
+                    level = "malicious"
+                    taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict.lower()))
+                elif verdict == "MALWARE" or verdict == "C2":
+                    value = "5"
+                    level = "malicious"
+                    taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict.lower()))
+                else:
+                    value = "0"
+                    level = "safe"
                 first_seen_timestamp = raw.get('metadata').get('firstSeenTsGlobal')
                 if first_seen_timestamp != None:
                     first_seen_timestamp_str = str(first_seen_timestamp)
                     first_seen_timestamp_cut = first_seen_timestamp_str[:-3]
                     first_seen_timestamp_result = int(first_seen_timestamp_cut)
                     first_seen = datetime.fromtimestamp(first_seen_timestamp_result).isoformat()
-                else:
-                    first_seen = "Not found"
+                    taxonomies.append(self.build_taxonomy(level,namespace,"First_seen",first_seen))
                 last_seen_timestamp = raw.get('metadata').get('lastSeenTsGlobal')
                 if last_seen_timestamp != None:
                     last_seen_timestamp_str = str(last_seen_timestamp)
                     last_seen_timestamp_cut = last_seen_timestamp_str[:-3]
                     last_seen_timestamp_result = int(last_seen_timestamp_cut)
                     last_seen = datetime.fromtimestamp(last_seen_timestamp_result).isoformat()
-                else:
-                    last_seen = "Not found"
-            if verdict == "benign" or verdict == "BENIGN":
-                value = "0"
-                level = "safe"
-            elif verdict == "greyware" or verdict == "GREYWARE":
-                value = "3"
-                level = "suspicious"
-            elif verdict == "phising" or verdict == "PHISING":
-                value = "4"
-                level = "malicious"
-            elif verdict == "malware" or verdict == "MALWARE" or verdict == "C2":
-                value = "5"
-                level = "malicious"
-            taxonomies.append(self.build_taxonomy(level,namespace,"Score",value))
-            taxonomies.append(self.build_taxonomy(level,namespace,"First_seen",first_seen))
-            taxonomies.append(self.build_taxonomy(level,namespace,"Last_seen",last_seen))
-        else:
-            value = "Not found"
-            taxonomies.append(self.build_taxonomy(level,namespace,"Autofocus",value))
+                    taxonomies.append(self.build_taxonomy(level,namespace,"Last_seen",last_seen))
+                
+        taxonomies.append(self.build_taxonomy(level,namespace,"Score",value))
+                
         return {'taxonomies': taxonomies}
 
 
@@ -211,6 +232,23 @@ class AutoFocusAnalyzer(Analyzer):
                               dir_ip = ip[0]
                               observable_ip = {'dataType': 'ip', 'data': dir_ip}
                               artifacts.append(observable_ip)
+            metadata = report.get('metadata')
+            md5 = metadata.get('md5')
+            if md5 != None:
+              observable_md5 = {'dataType': 'hash', 'data': md5}
+              if observable_md5 not in artifacts:
+                  artifacts.append(observable_md5)
+            sha1 = metadata.get('sha1')
+            if sha1 != None:
+              observable_sha1 = {'dataType': 'hash', 'data': sha1}
+              if observable_sha1 not in artifacts:
+                  artifacts.append(observable_sha1)          
+            sha256 = metadata.get('sha256')
+            if sha256 != None:
+              observable_sha256 = {'dataType': 'hash', 'data': sha256}
+              if observable_sha256 not in artifacts:
+                  artifacts.append(observable_sha256)
+                  
           except Exception as e:
             print(e)
             pass

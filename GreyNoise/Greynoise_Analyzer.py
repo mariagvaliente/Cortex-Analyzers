@@ -38,19 +38,19 @@ class GreyNoiseAnalyzer(Analyzer):
                 tags = record.get('tags', None)
                 if classification == 'malicious':
                     level = 'malicious'
-                    score = "5/5"
+                    score = "5"
                 elif classification == 'benign':
                     level = 'safe'
-                    score = "0/5"
+                    score = "0"
                 else:
                     level = 'info'
-                    score = "1/5"
+                    score = "1"
         else:
-            taxonomies.append(self.build_taxonomy('info', 'GreyNoise', 'Records', 'None'))
+            taxonomies.append(self.build_taxonomy('info', 'GreyNoise', 'Records', 'None'))                  
 
         taxonomies.append(self.build_taxonomy(level,namespace,"Score",score))
         taxonomies.append(self.build_taxonomy(level,namespace,"Last_seen",last_seen))
-        if score == "5/5":
+        if score == "5":
            for tag in tags:
                taxonomies.append(self.build_taxonomy(level,namespace,"Tag",tag))
 

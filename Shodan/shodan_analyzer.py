@@ -87,16 +87,6 @@ class ShodanAnalyzer(Analyzer):
             taxonomies.append(self.build_taxonomy(level, namespace, 'Hosts', value))
         return {'taxonomies': taxonomies}
 
-    def artifacts(self, report):
-        artifacts = []
-        if report.get('host') != None:
-           vulns = report.get('host').get('vulns')
-           if len(vulns) != 0:
-              for v in vulns:
-                  observable_vuln = {'dataType': 'vulnerability', 'data': v}
-                  artifacts.append(observable_vuln)
-
-        return artifacts
 
     def run(self):
         try:

@@ -27,43 +27,43 @@ class EmailRepAnalyzer(Analyzer):
             if suspicious:
                 if malicious_activity and malicious_activity_recent:
                     if blacklisted or data_breach or spam:
-                        score = "5/5"
+                        score = "5"
                         level = "malicious"
                     else:
-                        score = "4/5"
+                        score = "4"
                         level = "malicious"
                 else:
-                    score = "3/5"
+                    score = "3"
                     level = "suspicious"
             else:
-                score = "2/5"
+                score = "2"
                 level = "info"
         else:
             if suspicious:
                 if malicious_activity:
                     if blacklisted or data_breach or spam:
-                        score = "4/5"
+                        score = "4"
                         level = "malicious"
                     else:
-                        score = "3/5"
+                        score = "3"
                         level = "suspicious"
                 else:
-                    score = "2/5"
+                    score = "2"
                     level = "info"
             else:
                 if malicious_activity:
                     if blacklisted or data_breach or spam:
-                        score = "3/5"
+                        score = "3"
                         level = "suspicious"
                     else:
-                        score = "2/5"
+                        score = "2"
                         level = "info"
                 else:
                     if blacklisted or data_breach or spam:
-                        score = "2/5"
+                        score = "2"
                         level = "info"
                     else:
-                        score = "1/5"
+                        score = "1"
                         level = "info"
 
         taxonomies.append(
@@ -75,7 +75,7 @@ class EmailRepAnalyzer(Analyzer):
         )
 
         return {"taxonomies": taxonomies}
-
+        
 
     def run(self):
         data = self.get_data()

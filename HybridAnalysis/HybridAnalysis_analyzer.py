@@ -12,6 +12,7 @@ class HybridAnalysisAnalyzer(Analyzer):
     def __init__(self):
         Analyzer.__init__(self)
         self.api_key = self.get_param('config.key', None, 'Falcon Sandbox API key is missing')
+
         self.basic_url = 'https://www.hybrid-analysis.com/api/v2/search/'
         self.headers = {'api-key': self.api_key,'user-agent':'Falcon Sandbox'}
 
@@ -23,8 +24,7 @@ class HybridAnalysisAnalyzer(Analyzer):
         submissions = raw.get('submissions')
         tags = raw.get('tags')
         av_detect = raw.get('av_detect')
-        # default values
-        level = "info"
+        # default value
         namespace = "HybridAnalysis"
         
         # SCORE
@@ -51,14 +51,11 @@ class HybridAnalysisAnalyzer(Analyzer):
                  score = '5'
                  level = 'malicious'
            else:
-              score = "1"
-              level = 'info'
+              score = '0'
+              level = 'safe'
         else:
            if threat_score == '0':
-              if verdict == 'whitelisted':
-                 score = '0'
-              else:
-                 score = '1'
+              score = '0'
            elif 20 > int(threat_score) >= 1:
               score = '2'
            elif 60 > int(threat_score) >= 20:
@@ -77,13 +74,9 @@ class HybridAnalysisAnalyzer(Analyzer):
            first_seen = dates_sort[0]
            last_seen = dates_sort[-1]
            if first_seen != None:
-             taxonomies.append(self.build_taxonomy(level, namespace, "First_seen", first_seen))
-           else:
-             taxonomies.append(self.build_taxonomy(level, namespace, "First_seen", "Not found"))           
+             taxonomies.append(self.build_taxonomy(level, namespace, "First_seen", first_seen))         
            if last_seen != None:
-             taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
-           else:
-             taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", "Not found"))               
+             taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))              
               
         # TAGS
         if len(tags) != 0:
@@ -146,6 +139,27 @@ class HybridAnalysisAnalyzer(Analyzer):
                      artifacts.append(observable_hash_sha256)
                   if observable_hash_md5 not in artifacts:
                      artifacts.append(observable_hash_md5)
+           submit_name = report.get('submit_name')
+           if submit_name != None:
+              observable_filename = {'dataType': 'filename', 'data': submit_name}
+              if observable_filename not in artifacts:
+                 artifacts.append(observable_filename)
+           md5 = report.get('md5')
+           if md5 != None:
+              observable_md5 = {'dataType': 'hash', 'data': md5}
+              if observable_md5 not in artifacts:
+                 artifacts.append(observable_md5)
+           sha1 = report.get('sha1')
+           if sha1 != None:
+              observable_sha1 = {'dataType': 'hash', 'data': sha1}
+              if observable_sha1 not in artifacts:
+                 artifacts.append(observable_sha1)          
+           sha256 = report.get('sha256')
+           if sha256 != None:
+              observable_sha256 = {'dataType': 'hash', 'data': sha256}
+              if observable_sha256 not in artifacts:
+                 artifacts.append(observable_sha256)
+              
         return artifacts
 
 

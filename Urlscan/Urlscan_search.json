@@ -1,13 +1,16 @@
 {
-  "name": "Urlscan",
+  "name": "Urlscan_search",
   "author": "Maria Garcia",
   "license": "AGPL-V3",
   "url": "https://github.com/mariagvaliente/cortex-analyzers",
   "version": "1.0",
-  "description": "Scan iocs on urlscan.io",
-  "dataTypeList": ["domain", "fqdn", "ip", "hash"],
+  "description": "Search iocs on urlscan.io",
+  "dataTypeList": ["domain", "fqdn", "ip", "hash", "filename", "url"],
   "command": "Urlscan/Urlscan_Analyzer.py",
   "baseConfig": "Urlscan.io",
+  "config": {
+        "service": "search_ioc"
+  },
   "configurationItems": [
     {
       "name": "key",
