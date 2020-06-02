@@ -94,6 +94,8 @@ class VirusTotalAnalyzer(Analyzer):
                 if "detected_downloaded_samples" in raw:
                     value = "{} detected_downloaded_sample(s)".format(len(raw["detected_downloaded_samples"]))
                     taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
+                if "country" in raw:
+                    taxonomies.append(self.build_taxonomy(level, namespace, "Country", raw['country']))
 
         return {"taxonomies": taxonomies}
 

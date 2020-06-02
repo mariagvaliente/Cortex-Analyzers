@@ -7,5 +7,14 @@
   "description": "emailrep.io score",
   "dataTypeList": ["mail"],
   "command": "Emailrep/Emailrep_Analyzer.py",
-  "baseConfig": "EmailRep"
+  "baseConfig": "EmailRep",
+  "configurationItems": [
+      {
+        "name": "apikey",
+        "description": "Emailrep API key",
+        "type": "string",
+        "multi": false,
+        "required": true
+      }
+  ]
 }

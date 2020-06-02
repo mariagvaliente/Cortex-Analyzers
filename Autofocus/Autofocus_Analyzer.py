@@ -49,7 +49,7 @@ class AutoFocusAnalyzer(Analyzer):
            res = {'metadata': indicator, 'tags': tags, 'relations': relations}
            return res
         else:
-           self.error("Autofocus returns %s" % response.status_code)
+           self.error("Autofocus returns %s" % r.status_code)
 
 
     def get_analysis(self):
@@ -71,6 +71,7 @@ class AutoFocusAnalyzer(Analyzer):
         sample = AFSample.get(data)
         analysis = self.get_analysis()
         res = {'metadata': sample.serialize(),'tags': [tag.serialize() for tag in sample.__getattribute__('tags')], 'analysis': analysis}
+        print(res)
         return res
 
     def summary(self, raw):
@@ -287,7 +288,7 @@ class AutoFocusAnalyzer(Analyzer):
             self.report(records)
 
         except AFSampleAbsent as e: # Sample not in Autofocus
-            self.error('Unknown sample in Autofocus')
+            self.report({'metadata': 'not found', 'tags': []})
         except AFServerError as e: # Server error
             self.unexpectedError(e)
         except AFClientError as e: # Client error

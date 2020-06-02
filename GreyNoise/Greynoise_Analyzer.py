@@ -28,33 +28,58 @@ class GreyNoiseAnalyzer(Analyzer):
 
     def summary(self, raw):
         taxonomies = []
-        level = "info"
         namespace = "GreyNoise"
 
         if raw.get('data'):
             for record in raw.get('data', []):
                 classification = record.get('classification', 'unknown')
+                first_seen = record.get('first_seen', None)
                 last_seen = record.get('last_seen', None)
                 tags = record.get('tags', None)
                 if classification == 'malicious':
                     level = 'malicious'
-                    score = "5"
-                elif classification == 'benign':
-                    level = 'safe'
-                    score = "0"
-                else:
+                    score = "4"
+                elif classification == 'unknown':
                     level = 'info'
                     score = "1"
+                else:
+                    level = 'safe'
+                    score = "0"
+                    
+                taxonomies.append(self.build_taxonomy(level,namespace,"Score",score))
+                
+                if first_seen != None:
+                   taxonomies.append(self.build_taxonomy(level,namespace,"First_seen",first_seen))
+                if last_seen != None:
+                   taxonomies.append(self.build_taxonomy(level,namespace,"Last_seen",last_seen))
+                if len(tags) != 0:
+                   for tag in tags:
+                       taxonomies.append(self.build_taxonomy(level,namespace,"Tag",tag))
+                country = record.get('metadata').get('country', None)
+                city = record.get('metadata').get('city', None)
+                if country != None:
+                   taxonomies.append(self.build_taxonomy(level,namespace,"Country",country))
+                if city != None:
+                   taxonomies.append(self.build_taxonomy(level,namespace,"City",city))
+                
         else:
             taxonomies.append(self.build_taxonomy('info', 'GreyNoise', 'Records', 'None'))                  
 
-        taxonomies.append(self.build_taxonomy(level,namespace,"Score",score))
-        taxonomies.append(self.build_taxonomy(level,namespace,"Last_seen",last_seen))
-        if score == "5":
-           for tag in tags:
-               taxonomies.append(self.build_taxonomy(level,namespace,"Tag",tag))
+        
+
 
         return {'taxonomies': taxonomies}
+        
+    def artifacts(self, report):
+        artifacts = []
+        if report.get('data'):
+            for record in report.get('data'):
+                if record['metadata']['rdns'] != "" and record['metadata']['rdns'] != None:
+                   observable_domain = {'dataType': 'domain', 'data': record['metadata']['rdns']}
+                   if observable_domain not in artifacts:
+                      artifacts.append(observable_domain)
+              
+        return artifacts
 
 
 if __name__ == '__main__':

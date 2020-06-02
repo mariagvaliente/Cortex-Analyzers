@@ -26,12 +26,14 @@ class UrlscanAnalyzer(Analyzer):
             response = requests.get('https://urlscan.io/api/v1/search?q="{}"'.format(indicator_value_parsed_hxxp),headers=self.headers)
         else:
             response = requests.get('https://urlscan.io/api/v1/search?q={}:{}'.format(indicator_type, indicator_value),headers=self.headers)
+
         if response.status_code == 200:
             if self.data_type == "url":
                 response_json = response.json()
                 response_results = response_json.get('results')
+                print(response_results)
                 if len(response_results) == 0:
-                    self.error("Unknown sample in Urlscan.io")
+                    return ({'page': 'Not found'})
                 else:
                     id_url = response_results[0].get('_id')
                     url_api_search = "https://urlscan.io/api/v1/result/"
@@ -40,9 +42,14 @@ class UrlscanAnalyzer(Analyzer):
                     return res_search_json
             else:
                 response_json = response.json()
+                offset = 0
+
+                total_results = response_json['total']
                 response_results = response_json.get('results')
+
                 if len(response_results) == 0:
-                    self.error("Unknown sample in Urlscan.io")
+                    return ({'results': [], 'total': 0})
+
                 else:
                     for r in response_results:
                         task = r.get('task')
@@ -50,16 +57,36 @@ class UrlscanAnalyzer(Analyzer):
                         dates.append(time)
                         url = task.get('url')
                         if url not in urls:
-                           urls.append(url)
-                return response_json
+                            urls.append(url)
+
+                    offset += len(response_results)
+
+                    while(offset < total_results):
+
+                        response = requests.get(
+                            'https://urlscan.io/api/v1/search?q={}:{}&offset={}'.format(indicator_type, indicator_value, offset),
+                            headers=self.headers)
+                        response_results = response.json()['results']
+                        for r in response_results:
+                            task = r.get('task')
+                            time = task.get('time')
+                            dates.append(time)
+                            url = task.get('url')
+                            if url not in urls:
+                               urls.append(url)
+
+                        offset += len(response_results)
+
+
+                    return response_json
         else:
             self.error("urlscan.io returns %s" % response.status_code)
             
         
     def summary(self, raw):
         taxonomies = []
-        level = "info"
         namespace = "Urlscan.io"
+        level = "info"
         
         if self.data_type == "url":
             malicious = raw["verdicts"]["overall"]["malicious"]
@@ -75,17 +102,10 @@ class UrlscanAnalyzer(Analyzer):
                level = 'malicious'
             elif score > 0:
                level = 'suspicious'
-            if score == None:
-               my_score == '1'
-               level = 'info'
             else:
                if int(score) == 0:
-                  if int(votesBenign) > 0:
-                     my_score = '0'
-                     level = 'safe'
-                  else:
-                     my_score = '1'
-                     level = 'info'
+                  my_score = '0'
+                  level = 'safe'
                elif 20 > int(score) >= 1:
                   my_score = '2'
                elif 60 > int(score) >= 20:
@@ -94,14 +114,8 @@ class UrlscanAnalyzer(Analyzer):
                   my_score = '4'
                elif 100 >= int(score) >= 80:
                   my_score = '5'
+            taxonomies.append(self.build_taxonomy(level, namespace, "Score", my_score))
         else:
-            total = raw['total']
-            if total <= 1:
-               my_score = '1'
-               level = 'info'
-            else:
-               my_score = '3'
-               level = 'suspicious'
             #FIRST AND LAST SEEN
             if len(dates) != 0:
                first_seen = dates[-1]
@@ -109,7 +123,7 @@ class UrlscanAnalyzer(Analyzer):
                last_seen = dates[0]
                taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
                
-        taxonomies.append(self.build_taxonomy(level, namespace, "Score", my_score))
+        
         return {"taxonomies": taxonomies}
 
     def artifacts(self, report):

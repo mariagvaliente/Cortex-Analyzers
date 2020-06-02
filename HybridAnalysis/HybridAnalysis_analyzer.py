@@ -193,7 +193,7 @@ class HybridAnalysisAnalyzer(Analyzer):
                 if len(res_search) != 0:
                    self.report(res_search[0])
                 else:
-                   self.error("Unknown sample in HybridAnalysis")
+                   self.report({"search_terms": [{"id": "hash", "value": indicator_value}], "count": 0, "result": []})
             else:
                 url_report = 'https://www.hybrid-analysis.com/api/v2/report/'
                 query = '/summary'

@@ -70,21 +70,36 @@ class CensysAnalyzer(Analyzer):
             heartbleed = raw.get('443', {}).get('https', {}).get('heartbleed', {}).get('heartbleed_vulnerable', False)
             last_seen = raw.get('updated_at')
             tags = raw.get('tags')
-            for tag in tags:
-                taxonomies.append(self.build_taxonomy('info', 'Censys', 'Tag', tag))
+            country = raw.get('location').get('country')
+            city = raw.get('location').get('city')
+            
+            if len(tags) != 0:
+               for tag in tags:
+                   taxonomies.append(self.build_taxonomy('info', 'Censys', 'Tag', tag))
 
             if heartbleed:
                 taxonomies.append(self.build_taxonomy('malicious', 'Censys', 'Heartbleed', 'vulnerable'))
-
-            taxonomies.append(self.build_taxonomy('info', 'Censys', 'Last_seen', last_seen))
+            
+            if last_seen != None:
+               taxonomies.append(self.build_taxonomy('info', 'Censys', 'Last_seen', last_seen))
+               
+            if country != None:
+               taxonomies.append(self.build_taxonomy('info', 'Censys', 'Country', country))
+               
+            if city != None:
+               taxonomies.append(self.build_taxonomy('info', 'Censys', 'City', city))
+               
         elif 'website' in raw:
             raw = raw['website']
             last_seen = raw.get('updated_at')
             tags = raw.get('tags')
-            for tag in tags:
-                taxonomies.append(self.build_taxonomy('info', 'Censys', 'Tag', tag))
-
-            taxonomies.append(self.build_taxonomy('info', 'Censys', 'Last_seen', last_seen))
+            
+            if len(tags) != 0:
+               for tag in tags:
+                   taxonomies.append(self.build_taxonomy('info', 'Censys', 'Tag', tag))
+            if last_seen != None:
+               taxonomies.append(self.build_taxonomy('info', 'Censys', 'Last_seen', last_seen))
+               
         return {
             'taxonomies': taxonomies
         }

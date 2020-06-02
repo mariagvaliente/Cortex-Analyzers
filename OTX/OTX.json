@@ -1,0 +1,20 @@
+{
+  "name": "OTX",
+  "version": "1.0",
+  "author": "Maria Garcia",
+  "url": "https://github.com/mariagvaliente/cortex-analyzers",
+  "license": "AGPL-V3",
+  "description": "Query AlienVault OTX for IPs, domains, URLs, or file hashes.",
+  "dataTypeList": ["url", "domain", "file", "hash", "ip"],
+  "baseConfig": "OTX",
+  "command": "OTX/otx_analyzer.py",
+  "configurationItems": [
+    {
+      "name": "key",
+      "description": "Define the API key to use to connect the service",
+      "type": "string",
+      "multi": false,
+      "required": true
+    }
+  ]
+}
