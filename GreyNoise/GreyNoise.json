@@ -1,13 +1,13 @@
 {
     "name": "GreyNoise",
     "version": "2.3",
-    "author": "Maria Garcia",
-    "url": "https://github.com/mariagvaliente/cortex-analyzers",
-    "license": "AGPL-V3",
-    "description": "Determine the threat score of an IP based on the classification.",
+    "author": "Nclose",
+    "url": "https://github.com/TheHive-Project/Cortex-Analyzers",
+    "license": "APLv2",
+    "description": "Determine whether an IP has known scanning activity using GreyNoise.",
     "dataTypeList": ["ip"],
     "baseConfig": "GreyNoise",
-    "command": "GreyNoise/Greynoise_Analyzer.py",
+    "command": "GreyNoise/greynoise.py",
     "configurationItems": [
       {
         "name": "key",

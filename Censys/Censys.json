@@ -1,13 +1,13 @@
 {
   "name": "Censys",
-  "author": "Maria Garcia",
+  "author": "Nils Kuhnert, CERT-Bund",
   "license": "AGPL-V3",
-  "url": "https://github.com/mariagvaliente/cortex-analyzers",
+  "url": "https://github.com/BSI-CERT-Bund/censys-analyzer",
   "version": "1.0",
-  "description": "Get tags of an IP or domain.",
-  "dataTypeList": ["ip", "domain"],
+  "description": "Check IPs, certificate hashes or domains against censys.io.",
+  "dataTypeList": ["ip", "hash", "domain"],
   "baseConfig": "Censys",
-  "command": "Censys/Censys_Analyzer.py",
+  "command": "Censys/censys_analyzer.py",
   "configurationItems": [
     {
       "name": "uid",

@@ -1,13 +1,13 @@
 {
-  "name": "OTX",
-  "version": "1.0",
-  "author": "Maria Garcia",
-  "url": "https://github.com/mariagvaliente/cortex-analyzers",
+  "name": "OTXQuery",
+  "version": "2.0",
+  "author": "Eric Capuano",
+  "url": "https://github.com/TheHive-Project/Cortex-Analyzers",
   "license": "AGPL-V3",
   "description": "Query AlienVault OTX for IPs, domains, URLs, or file hashes.",
   "dataTypeList": ["url", "domain", "file", "hash", "ip"],
-  "baseConfig": "OTX",
-  "command": "OTX/otx_analyzer.py",
+  "baseConfig": "OTXQuery",
+  "command": "OTXQuery/otxquery.py",
   "configurationItems": [
     {
       "name": "key",

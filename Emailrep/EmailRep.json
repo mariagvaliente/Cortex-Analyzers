@@ -1,20 +1,20 @@
 {
   "name": "EmailRep",
   "version": "1.0",
-  "author": "Maria Garcia",
-  "url": "https://github.com/mariagvaliente/cortex-analyzers",
-  "license": "AGPL-V3",
-  "description": "emailrep.io score",
+  "author": "Manabu Niseki",
+  "url": "https://github.com/ninoseki/emailrep-analyzer",
+  "license": "MIT",
+  "description": "emailrep.io lookup.",
   "dataTypeList": ["mail"],
-  "command": "Emailrep/Emailrep_Analyzer.py",
+  "command": "EmailRep/emailrep_analyzer.py",
   "baseConfig": "EmailRep",
   "configurationItems": [
-      {
-        "name": "apikey",
-        "description": "Emailrep API key",
-        "type": "string",
-        "multi": false,
-        "required": true
-      }
-  ]
+    {
+      "name": "key",
+      "description": "Define the API Key",
+      "type": "string",
+      "multi": false,
+      "required": false
+    }
+  ]  
 }

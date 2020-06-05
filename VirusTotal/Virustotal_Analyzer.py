@@ -107,6 +107,7 @@ class VirusTotalAnalyzer(Analyzer):
           detected_downloaded_samples = report.get('detected_downloaded_samples')
           detected_referrer_samples = report.get('detected_referrer_samples')
           resolutions = report.get('resolutions')
+          domain_siblings = report.get('domain_siblings')
           if detected_urls != None:
              for detected_url in report.get('detected_urls'):
                  observable_url = {'dataType': 'url', 'data': detected_url['url']}
@@ -137,6 +138,11 @@ class VirusTotalAnalyzer(Analyzer):
                     observable_ip = {'dataType': 'ip', 'data': resolution['ip_address']}
                     if observable_ip not in artifacts:
                        artifacts.append(observable_ip)
+          if domain_siblings != None:
+             for domain in report.get('domain_siblings'):
+                 observable_domain = {'dataType': 'domain', 'data': domain}
+                 if observable_domain not in artifacts:
+                    artifacts.append(observable_domain)                 
       else:
           additional_info = report.get('additional_info')
           if additional_info != None:
@@ -165,6 +171,13 @@ class VirusTotalAnalyzer(Analyzer):
                        observable_filename = {'dataType': 'filename', 'data': s}
                        if observable_filename not in artifacts:
                           artifacts.append(observable_filename)
+             contacted_urls = report.get('ITW_urls')
+             if contacted_urls != None:
+                if len(contacted_urls) != 0:
+                   for url in contacted_urls:
+                       observable_url = {'dataType': 'url', 'data': url}
+                       if observable_url not in artifacts:
+                          artifacts.append(observable_url)             
           
 
       return artifacts

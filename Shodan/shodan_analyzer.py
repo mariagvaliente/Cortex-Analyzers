@@ -54,6 +54,7 @@ class ShodanAnalyzer(Analyzer):
                 taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
             if 'org' in raw['host']:
                 taxonomies.append(self.build_taxonomy(level, namespace, 'Org', raw['host']['org']))
+            # Added information about tags and last seen date
             if 'tags' in raw['host']:
                 tags = raw['host']['tags']
                 for tag in tags:
@@ -73,6 +74,12 @@ class ShodanAnalyzer(Analyzer):
             if 'isp' in raw['info_domain']:
                 value = "{}".format(len(raw['info_domain']['isp']))
                 taxonomies.append(self.build_taxonomy(level, namespace, 'ISPs', value))
+            # Added information about country name and organization
+            if 'country_name' in raw['info_domain']['location']['country_name']:
+                value = raw['info_domain']['location']['country_name']
+                taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
+            if 'org' in raw['info_domain']['org']:
+                taxonomies.append(self.build_taxonomy(level, namespace, 'Org', raw['info_domain']['org']))               
         elif self.service == 'dns_resolve':
             value = "{}".format(len(raw['records']))
             taxonomies.append(self.build_taxonomy(level, namespace, 'DNS resolutions', value))
@@ -88,6 +95,7 @@ class ShodanAnalyzer(Analyzer):
         return {'taxonomies': taxonomies}
         
 
+    # Added function artifacts in order to extract relations between IPs or domains as observables
     def artifacts(self, report):
         artifacts = []
         if self.service == 'reverse_dns':
@@ -98,6 +106,13 @@ class ShodanAnalyzer(Analyzer):
                        observable_domain = {'dataType': 'domain', 'data': domain}
                        if observable_domain not in artifacts:
                           artifacts.append(observable_domain)
+        if self.service == 'dns_resolve':
+            for k in report['records'].keys():
+                ip = report['records'][k]
+                if ip != None:
+                   observable_ip = {'dataType': 'ip', 'data': ip}
+                   if observable_ip not in artifacts:
+                      artifacts.append(observable_ip)
         return artifacts
         
 

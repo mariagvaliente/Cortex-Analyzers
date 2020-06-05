@@ -5,6 +5,7 @@ import requests
 import urllib
 import hashlib
 import io
+import re
 from cortexutils.analyzer import Analyzer
 
 
@@ -31,6 +32,7 @@ class OTXQueryAnalyzer(Analyzer):
             'passive_dns'
         ]
         ip_ = {}
+        # Added information about first and last seen dates
         last_seen_dates = []
         first_seen_dates = []
         try:
@@ -54,11 +56,11 @@ class OTXQueryAnalyzer(Analyzer):
             else:
                first_seen = None
                
+            # Added a score based on the ip reputation
             reputation = ip_['reputation']['reputation']
             
             if reputation != None:
                threat_score = reputation.get('threat_score')
-               print(threat_score)
                if threat_score == 7:
                   my_score = '0'
                elif 5 <= threat_score <= 6:
@@ -98,6 +100,7 @@ class OTXQueryAnalyzer(Analyzer):
         headers = self._get_headers()
         sections = ['general', 'geo', 'malware', 'url_list', 'passive_dns']
         ip_ = {}
+        # Added information about first and last seen dates
         last_seen_dates = []
         first_seen_dates = []
         try:
@@ -118,6 +121,7 @@ class OTXQueryAnalyzer(Analyzer):
             else:
                first_seen = None
             
+            # Added a score based on Google Safe Browsing verdict
             list_verdict = ip_['url_list']['url_list']
             if len(list_verdict) != 0:
                gsb = list_verdict[0].get('gsb')
@@ -160,13 +164,13 @@ class OTXQueryAnalyzer(Analyzer):
         headers = self._get_headers()
         sections = ['general', 'analysis']
         ip_ = {}
+        # Added information about first and last seen dates
         last_seen_dates = []
         first_seen_dates = []
         try:
             for section in sections:
                 queryurl = baseurl + section
                 ip_[section] = json.loads(requests.get(queryurl, headers=headers).content)
-                print(ip_[section])
             pulses = ip_.get('general').get('pulse_info').get('pulses')
             if len(pulses) != 0: 
                for pulse in pulses:
@@ -181,6 +185,7 @@ class OTXQueryAnalyzer(Analyzer):
             else:
                first_seen = None
 
+            # Added a score based on cuckoo score or antivirus results
             if ip_['analysis']['analysis']:            
                 cuckoo_score = ip_['analysis']['analysis'].get('plugins').get('cuckoo')
                 result_msdefender = ip_['analysis']['analysis'].get('plugins').get('msdefender').get('results')
@@ -266,6 +271,7 @@ class OTXQueryAnalyzer(Analyzer):
         headers = self._get_headers()
         sections = ['general', 'url_list']
         IP_ = {}
+        # Added information about first and last seen dates
         last_seen_dates = []
         first_seen_dates = []
         try:
@@ -286,6 +292,7 @@ class OTXQueryAnalyzer(Analyzer):
             else:
                first_seen = None
                
+            # Added a score based on Google Safe Browsing verdict
             list_verdict = IP_['url_list']['url_list']
             if len(list_verdict) != 0:
                gsb = list_verdict[0].get('gsb')
@@ -314,6 +321,7 @@ class OTXQueryAnalyzer(Analyzer):
         level = "info"
         namespace = "OTX"
         
+        # Added information about scores
         score = raw["score"]
         if score != None:
            if score == '4' or score == '5':
@@ -325,9 +333,11 @@ class OTXQueryAnalyzer(Analyzer):
            else:
               level = 'safe'
            taxonomies.append(self.build_taxonomy(level, namespace, "Score", score))
-           
+
         value = "{}".format(raw["pulse_count"])
         taxonomies.append(self.build_taxonomy(level, namespace, "Pulses", value))
+
+        # Added information about dates
         first_seen = raw["first_seen"]
         if first_seen != None:
            taxonomies.append(self.build_taxonomy(level, namespace, "First_seen", first_seen))
@@ -337,11 +347,13 @@ class OTXQueryAnalyzer(Analyzer):
         pulses = raw['pulses']
         if len(pulses) != 0:
            for pulse in pulses:
+               # Added information about pulse tags
                tags = pulse['tags']
                if len(tags) != 0:
                   for tag in tags:
                       if (self.build_taxonomy(level, namespace, "Tag", tag)) not in taxonomies:
                          taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag))
+        # Added information about geolocation
         if self.data_type == "domain" or self.data_type == "ip":
            if raw['country_name'] != None and raw['country_name'] != "-":
               taxonomies.append(self.build_taxonomy(level, namespace, "Country", raw['country_name']))
@@ -350,6 +362,8 @@ class OTXQueryAnalyzer(Analyzer):
         
         return {"taxonomies": taxonomies}
         
+    
+    # Added artifacts function in order to extract different type of related observables
     def artifacts(self, report):
         artifacts = []
         if self.data_type == "domain":
@@ -365,6 +379,16 @@ class OTXQueryAnalyzer(Analyzer):
                    observable_hash = {'dataType': 'hash', 'data': sample}
                    if observable_hash is not None and observable_hash not in artifacts:
                       artifacts.append(observable_hash)
+           passive_dns = report['passive_dns']
+           if len(passive_dns) != 0:
+              for p in passive_dns:
+                  if p['address'] != None:
+                     regex_ip = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', p['address'])
+                     if len(regex_ip) != 0:
+                        dir_ip = regex_ip[0]
+                        observable_ip = {'dataType': 'ip', 'data': dir_ip}
+                        if observable_ip not in artifacts:
+                           artifacts.append(observable_ip)
         elif self.data_type == "ip":
            url_list = report['url_list']
            if len(url_list) != 0:
@@ -388,7 +412,7 @@ class OTXQueryAnalyzer(Analyzer):
            url_list = report['url_list']
            if len(url_list) != 0:
                for url in url_list:
-                   observable_ip = {'dataType': 'url', 'data': url['result']['urlworker']['ip']}
+                   observable_ip = {'dataType': 'ip', 'data': url['result']['urlworker']['ip']}
                    if observable_ip is not None and observable_ip not in artifacts:
                       artifacts.append(observable_ip)
                    observable_sha256 = {'dataType': 'hash', 'data': url['result']['urlworker']['sha256']}
@@ -407,7 +431,22 @@ class OTXQueryAnalyzer(Analyzer):
                          observable_malware_family = {'dataType': 'malware_family', 'data': m['display_name']}
                          if observable_malware_family is not None and observable_malware_family not in artifacts:
                             artifacts.append(observable_malware_family)
-                            
+           sha1 = report['sha1']
+           if sha1 != None:
+              observable_sha1 = {'dataType': 'hash', 'data': sha1}
+              if observable_sha1 not in artifacts:
+                 artifacts.append(observable_sha1)
+           sha256 = report['sha256']
+           if sha256 != None:
+              observable_sha256 = {'dataType': 'hash', 'data': sha256}
+              if observable_sha256 not in artifacts:
+                 artifacts.append(observable_sha256)
+           md5 = report['md5']
+           if md5 != None:
+              observable_md5 = {'dataType': 'hash', 'data': md5}
+              if observable_md5 not in artifacts:
+                 artifacts.append(observable_md5)
+                 
         return artifacts
                           
            

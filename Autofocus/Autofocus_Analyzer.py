@@ -6,6 +6,7 @@ import requests
 import json
 from datetime import datetime
 import re
+# Autofocus api key
 AutoFocusAPI.api_key = "Your API key here"
 
 # Main analyzer
@@ -16,28 +17,32 @@ class AutoFocusAnalyzer(Analyzer):
             'config.service', None, 'Service parameter is missing')
         self.autofocus_key = self.getParam(
             'config.apikey', None, 'Missing AutoFocus API key')
-        #URL api only for data types: IP, domain and url
+        #URL api only for data types: IP and domain
         self.basic_url = "https://autofocus.paloaltonetworks.com/api/v1.0/tic"
+        # Necessary headers 
         if self.service == "search_ioc":
             self.headers = {"apiKey": self.autofocus_key, "Content-Type": "application/json"}
         else:
             self.headers = {"Content-Type": "application/json"}
             self.data = {"apiKey": self.autofocus_key, "coverage": "true", "sections": ["coverage", "http", "dns"]}
 
+    
+    # Function for searching samples which contact with an IP or domain
     def get_request(self):
         indicator_type_initial = str(self.data_type)
         if indicator_type_initial == "ip":
            indicator_type = "ipv4_address"
-           #field = "alias.domain"
            field = "sample.tasks.dns"
+           # This search can be done using other fields
            #field = "sample.tasks.http"
+           #field = "alias.domain"
         elif indicator_type_initial == "domain":
            indicator_type = "domain"
            field = "sample.tasks.dns"
         indicator_value = str(self.getData())
         self.params = {"indicatorType": indicator_type, "indicatorValue": indicator_value, "includeTags": "true"}
         url = str(self.basic_url)
-        r = requests.get(url, params=self.params, headers=self.headers)
+        r = requests.get(url, params=self.params, headers=self.headers, timeout=120)
         if r.status_code == 200:
            res_search = r.json()
            indicator = res_search.get('indicator')
@@ -52,6 +57,7 @@ class AutoFocusAnalyzer(Analyzer):
            self.error("Autofocus returns %s" % r.status_code)
 
 
+    # Function for getting analysis information of a sample
     def get_analysis(self):
         indicator_value = str(self.getData())
         url_analysis = "https://autofocus.paloaltonetworks.com/api/v1.0/sample/"
@@ -65,6 +71,7 @@ class AutoFocusAnalyzer(Analyzer):
            res_search = {}
         return res_search
 
+    # Autofocus service for searching samples
     def execute_autofocus_service(self):
         data = self.getData()
         AutoFocusAPI.api_key = self.autofocus_key
@@ -74,6 +81,7 @@ class AutoFocusAnalyzer(Analyzer):
         print(res)
         return res
 
+    
     def summary(self, raw):
         taxonomies = []
         namespace = "PaloAltoNetworks"
@@ -96,6 +104,7 @@ class AutoFocusAnalyzer(Analyzer):
                 else:
                     value = "0"
                     level = "safe"
+
                 first_seen = raw.get('metadata').get('create_date')
                 if first_seen != None:
                     taxonomies.append(self.build_taxonomy(level,namespace,"First_seen",first_seen))
@@ -129,6 +138,7 @@ class AutoFocusAnalyzer(Analyzer):
                 else:
                     value = "0"
                     level = "safe"
+                    
                 first_seen_timestamp = raw.get('metadata').get('firstSeenTsGlobal')
                 if first_seen_timestamp != None:
                     first_seen_timestamp_str = str(first_seen_timestamp)

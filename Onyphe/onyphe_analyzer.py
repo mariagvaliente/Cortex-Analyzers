@@ -37,6 +37,7 @@ class OnypheAnalyzer(Analyzer):
                 taxonomies.append(self.build_taxonomy(
                     'malicious', namespace, "Threat", "threatlist: {}, event count: {}".format(
                         threatlist, threat_data['count'])))
+                # Added information about last seen date
                 if threat_data['dates'] != None:
                    taxonomies.append(self.build_taxonomy(
                        'malicious', namespace, "Last_seen", threat_data['dates'][0]))
@@ -128,6 +129,7 @@ class OnypheAnalyzer(Analyzer):
         return {'taxonomies': taxonomies}
         
         
+    # Added artifacts function in order to extract related domains as observables
     def artifacts(self, report):
         artifacts = []
         if self.service == 'reverse':

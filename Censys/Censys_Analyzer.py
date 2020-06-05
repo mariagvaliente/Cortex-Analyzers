@@ -32,6 +32,16 @@ class CensysAnalyzer(Analyzer):
         c = CensysIPv4(api_id=self.__uid, api_secret=self.__api_key)
         return c.view(ip)
 
+    def search_certificate(self, hash):
+        """
+        Searches for a specific certificate using its hash
+        :param hash: certificate hash
+        :type hash: str
+        :return: dict
+        """
+        c = CensysCertificates(api_id=self.__uid, api_secret=self.__api_key)
+        return c.view(hash)
+
     def search_website(self, dom):
         """
         Searches for a website using the domainname
@@ -47,6 +57,10 @@ class CensysAnalyzer(Analyzer):
             if self.data_type == 'ip':
                 self.report({
                     'ip': self.search_hosts(self.get_data())
+                })
+            elif self.data_type == 'hash':
+                self.report({
+                    'cert': self.search_certificate(self.get_data())
                 })
             elif self.data_type == 'domain' or self.data_type == 'fqdn':
                 self.report({
@@ -67,7 +81,14 @@ class CensysAnalyzer(Analyzer):
         taxonomies = []
         if 'ip' in raw:
             raw = raw['ip']
+            service_count = len(raw.get('protocols', []))
             heartbleed = raw.get('443', {}).get('https', {}).get('heartbleed', {}).get('heartbleed_vulnerable', False)
+
+            taxonomies.append(self.build_taxonomy('info', 'Censys', 'OpenServices', service_count))
+            if heartbleed:
+                taxonomies.append(self.build_taxonomy('malicious', 'Censys', 'Heartbleed', 'vulnerable'))
+
+            # Added information about last seen date, tags and geolocation
             last_seen = raw.get('updated_at')
             tags = raw.get('tags')
             country = raw.get('location').get('country')
@@ -76,9 +97,6 @@ class CensysAnalyzer(Analyzer):
             if len(tags) != 0:
                for tag in tags:
                    taxonomies.append(self.build_taxonomy('info', 'Censys', 'Tag', tag))
-
-            if heartbleed:
-                taxonomies.append(self.build_taxonomy('malicious', 'Censys', 'Heartbleed', 'vulnerable'))
             
             if last_seen != None:
                taxonomies.append(self.build_taxonomy('info', 'Censys', 'Last_seen', last_seen))
@@ -87,10 +105,14 @@ class CensysAnalyzer(Analyzer):
                taxonomies.append(self.build_taxonomy('info', 'Censys', 'Country', country))
                
             if city != None:
-               taxonomies.append(self.build_taxonomy('info', 'Censys', 'City', city))
-               
+               taxonomies.append(self.build_taxonomy('info', 'Censys', 'City', city))        
         elif 'website' in raw:
             raw = raw['website']
+            service_count = len(raw.get('tags', []))
+
+            taxonomies.append(self.build_taxonomy('info', 'Censys', 'OpenServices', service_count))
+
+            #Added information about last seen date and tags
             last_seen = raw.get('updated_at')
             tags = raw.get('tags')
             
@@ -99,19 +121,29 @@ class CensysAnalyzer(Analyzer):
                    taxonomies.append(self.build_taxonomy('info', 'Censys', 'Tag', tag))
             if last_seen != None:
                taxonomies.append(self.build_taxonomy('info', 'Censys', 'Last_seen', last_seen))
+        elif 'cert' in raw:
+            raw = raw['cert']
+            trusted_count = len(raw.get('validation', []))
+            validator_count = len(raw.get('validation', []))
+
+            for _, validator in raw.get('validation', []).items():
+                if validator.get('blacklisted', False) or \
+                   validator.get('in_revocation_set', False) or \
+                   (not validator.get('whitelisted', False) and not validator.get('valid', False)):
+                    trusted_count -= 1
+            if trusted_count < validator_count:
+                taxonomies.append(self.build_taxonomy('suspicious', 'Censys', 'TrustedCount', '{}/{}'.format(
+                    trusted_count, validator_count
+                )))
+            else:
+                taxonomies.append(self.build_taxonomy('info', 'Censys', 'TrustedCount', '{}/{}'.format(
+                    trusted_count, validator_count
+                )))
                
         return {
             'taxonomies': taxonomies
         }
 
-    def artifacts(self, report):
-        artifacts = []
-        heartbleed = report.get('443', {}).get('https', {}).get('heartbleed', {}).get('heartbleed_vulnerable', False)
-        if heartbleed:
-           observable_vuln = {'dataType': 'vulnerability', 'data': 'CVE-2014-0160'}
-           artifacts.append(observable_vuln)
-
-        return artifacts
 
 if __name__ == '__main__':
     CensysAnalyzer().run()
