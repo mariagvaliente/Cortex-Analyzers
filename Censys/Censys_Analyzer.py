@@ -109,8 +109,11 @@ class CensysAnalyzer(Analyzer):
         elif 'website' in raw:
             raw = raw['website']
             service_count = len(raw.get('tags', []))
+            heartbleed = raw.get('443', {}).get('https', {}).get('heartbleed', {}).get('heartbleed_vulnerable', False)
 
             taxonomies.append(self.build_taxonomy('info', 'Censys', 'OpenServices', service_count))
+            if heartbleed:
+                taxonomies.append(self.build_taxonomy('malicious', 'Censys', 'Heartbleed', 'vulnerable'))
 
             #Added information about last seen date and tags
             last_seen = raw.get('updated_at')

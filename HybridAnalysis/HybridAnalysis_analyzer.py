@@ -36,7 +36,9 @@ class HybridAnalysisAnalyzer(Analyzer):
             else:
                level = 'safe'
     
-            if 20 > int(threat_score) >= 1:
+            if int(threat_score) == 0:
+               score = '0'
+            elif 20 > int(threat_score) >= 1:
                score = '2'
             elif 60 > int(threat_score) >= 20:
                score = '3'
@@ -45,7 +47,7 @@ class HybridAnalysisAnalyzer(Analyzer):
             elif 100 >= int(threat_score) >= 80:
                score = '5'
             else:
-               score = '0'
+               score = '1'
             taxonomies.append(self.build_taxonomy(level, namespace, "Score", score))
             
             # FIRST AND LAST SEEN

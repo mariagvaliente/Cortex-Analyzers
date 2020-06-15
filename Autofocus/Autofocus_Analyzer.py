@@ -33,26 +33,38 @@ class AutoFocusAnalyzer(Analyzer):
         if indicator_type_initial == "ip":
            indicator_type = "ipv4_address"
            field = "sample.tasks.dns"
-           # This search can be done using other fields
+           # This search can be done using other field
            #field = "sample.tasks.http"
-           #field = "alias.domain"
         elif indicator_type_initial == "domain":
            indicator_type = "domain"
            field = "sample.tasks.dns"
         indicator_value = str(self.getData())
         self.params = {"indicatorType": indicator_type, "indicatorValue": indicator_value, "includeTags": "true"}
         url = str(self.basic_url)
-        r = requests.get(url, params=self.params, headers=self.headers, timeout=120)
+        r = requests.get(url, params=self.params, headers=self.headers, timeout=None)
+        print(r.status_code)
         if r.status_code == 200:
            res_search = r.json()
-           indicator = res_search.get('indicator')
-           tags = res_search.get('tags')
-           relations = []
-           search = {"operator":"all","children":[{"field":field,"operator":"contains","value":indicator_value}]}
-           for sample in AFSample.search(search):
-               relations.append({'metadata': sample.serialize(),'tags': [tag.serialize() for tag in sample.__getattribute__('tags')]})
-           res = {'metadata': indicator, 'tags': tags, 'relations': relations}
-           return res
+           print(res_search)
+           if res_search != None:
+               indicator = res_search.get('indicator')
+               tags = res_search.get('tags')
+               relations = []
+               search = {"operator":"all","children":[{"field":field,"operator":"contains","value":indicator_value}]}
+               try:
+                   for sample in AFSample.search(search):
+                       relations.append({'metadata': sample.serialize(),'tags': [tag.serialize() for tag in sample.__getattribute__('tags')]})
+                   res = {'metadata': indicator, 'tags': tags, 'relations': relations}
+                   return res
+               except Exception:
+                   res = {'metadata': indicator, 'tags': tags, 'relations': []}
+                   return res
+           else:
+               return ({'metadata': 'Not found', 'tags': [], 'relations': []})
+        elif r.status_code == 408:
+           return ({'metadata': 'Request timeout', 'tags': [], 'relations': []})
+        elif r.status_code == 500:
+           return ({'metadata': 'Rate limit exceeded', 'tags': [], 'relations': []})
         else:
            self.error("Autofocus returns %s" % r.status_code)
 
@@ -89,21 +101,21 @@ class AutoFocusAnalyzer(Analyzer):
         if "metadata" in raw:
             if self.service == "search_hash":
                 verdict = raw.get('metadata').get('verdict')
-                if verdict == "greyware":
-                    value = "3"
-                    level = "suspicious"
-                    taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict))
-                elif verdict == "phising":
+                if verdict == "grayware":
                     value = "4"
                     level = "malicious"
                     taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict))
-                elif verdict == "malware":
+                elif verdict == "malware" or verdict == "phising":
                     value = "5"
                     level = "malicious"
                     taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict))
-                else:
+                elif verdict == "benign":
                     value = "0"
                     level = "safe"
+                    taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict))
+                else:
+                    value = "1"
+                    level = "info"
 
                 first_seen = raw.get('metadata').get('create_date')
                 if first_seen != None:
@@ -123,21 +135,21 @@ class AutoFocusAnalyzer(Analyzer):
                     verdict = verdict_dict.get('PAN_DB')
                 else:
                     verdict = None
-                if verdict == "GREYWARE":
-                    value = "3"
-                    level = "suspicious"
-                    taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict.lower()))
-                elif verdict == "PHISING":
+                if verdict == "GRAYWARE":
                     value = "4"
                     level = "malicious"
                     taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict.lower()))
-                elif verdict == "MALWARE" or verdict == "C2":
+                elif verdict == "MALWARE" or verdict == "PHISING" or verdict == "C2":
                     value = "5"
                     level = "malicious"
                     taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict.lower()))
-                else:
+                elif verdict == "BENIGN":
                     value = "0"
                     level = "safe"
+                    taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict.lower()))
+                else:
+                    value = "1"
+                    level = "info"                  
                     
                 first_seen_timestamp = raw.get('metadata').get('firstSeenTsGlobal')
                 if first_seen_timestamp != None:
@@ -261,7 +273,6 @@ class AutoFocusAnalyzer(Analyzer):
                   artifacts.append(observable_sha256)
                   
           except Exception as e:
-            print(e)
             pass
 
         if self.service == "search_ioc":

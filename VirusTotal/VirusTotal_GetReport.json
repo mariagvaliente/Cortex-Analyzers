@@ -8,9 +8,6 @@
   "dataTypeList": ["file", "hash", "domain","fqdn", "ip", "url"],
   "command": "VirusTotal/Virustotal_Analyzer.py",
   "baseConfig": "VirusTotal",
-  "config": {
-    "service": "get"
-  },
   "configurationItems": [
     {
       "name": "key",
@@ -18,14 +15,7 @@
       "type": "string",
       "multi": false,
       "required": true
-    },
-    {
-      "name": "polling_interval",
-      "description": "Define time interval between two requests attempts for the report",
-      "type": "number",
-      "multi": false,
-      "required": false,
-      "defaultValue": 60
     }
   ]
 }
+

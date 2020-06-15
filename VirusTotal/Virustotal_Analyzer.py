@@ -9,7 +9,6 @@ class VirusTotalAnalyzer(Analyzer):
 
     def __init__(self):
         Analyzer.__init__(self)
-        self.service = self.get_param('config.service', None, 'Service parameter is missing')
         self.api_key = self.get_param('config.key', None, 'VirusTotal API key is missing')
         self.basic_url = "https://www.virustotal.com/vtapi/v2/"
 
@@ -53,49 +52,48 @@ class VirusTotalAnalyzer(Analyzer):
         predicate = "GetReport"
         value = "0"
         
-        if self.service == "get":
-            if self.data_type == "hash" or self.data_type == "url":
-                if raw['scans'] != None:
-                    value = "{}/{}".format(raw["positives"], raw["total"])
-                    operation = int(raw["positives"])/int(raw["total"])
-                    if raw["positives"] == 0:
-                        level = "safe"
-                        score = "0"
-                    elif raw["positives"] < 5:
-                        level = "suspicious"
-                        score = "3"
-                    else:
-                        if operation < 0.5:
-                           level = "malicious"
-                           score = "4"
-                        else:
-                           level = "malicious"
-                           score = "5"
-                    taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
-                    taxonomies.append(self.build_taxonomy(level, namespace, "Score", score))
-                if raw["first_seen"] != None:
-                    first_seen = raw["first_seen"]
-                    taxonomies.append(self.build_taxonomy(level, namespace, "First_seen", first_seen))
-                if raw["scan_date"] != None:
-                    last_seen = raw["scan_date"]
-                    taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
-                if self.data_type == 'hash':
-                   if raw['tags'] != None:
-                      if len(raw["tags"]) != 0:
-                         for tag in raw["tags"]:
-                             taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag))
-            elif self.data_type == "domain" or self.data_type == "ip":
-                if "resolutions" in raw:
-                    value = "{} resolution(s)".format(len(raw["resolutions"]))
-                    taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
-                if "detected_urls" in raw:
-                    value = "{} detected_url(s)".format(len(raw["detected_urls"]))
-                    taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
-                if "detected_downloaded_samples" in raw:
-                    value = "{} detected_downloaded_sample(s)".format(len(raw["detected_downloaded_samples"]))
-                    taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
-                if "country" in raw:
-                    taxonomies.append(self.build_taxonomy(level, namespace, "Country", raw['country']))
+        if self.data_type == "hash" or self.data_type == "url":
+           if raw['scans'] != None:
+              value = "{}/{}".format(raw["positives"], raw["total"])
+              operation = int(raw["positives"])/int(raw["total"])
+              if raw["positives"] == 0:
+                 level = "safe"
+                 score = "0"
+              elif raw["positives"] < 5:
+                 level = "suspicious"
+                 score = "3"
+              else:
+                 if operation < 0.5:
+                    level = "malicious"
+                    score = "4"
+                 else:
+                    level = "malicious"
+                    score = "5"
+              taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
+              taxonomies.append(self.build_taxonomy(level, namespace, "Score", score))
+              if raw["first_seen"] != None:
+                 first_seen = raw["first_seen"]
+                 taxonomies.append(self.build_taxonomy(level, namespace, "First_seen", first_seen))
+              if raw["scan_date"] != None:
+                 last_seen = raw["scan_date"]
+                 taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
+              if self.data_type == 'hash':
+                 if raw['tags'] != None:
+                    if len(raw["tags"]) != 0:
+                       for tag in raw["tags"]:
+                           taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag))
+        elif self.data_type == "domain" or self.data_type == "ip":
+              if "resolutions" in raw:
+                  value = "{} resolution(s)".format(len(raw["resolutions"]))
+                  taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
+              if "detected_urls" in raw:
+                  value = "{} detected_url(s)".format(len(raw["detected_urls"]))
+                  taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
+              if "detected_downloaded_samples" in raw:
+                  value = "{} detected_downloaded_sample(s)".format(len(raw["detected_downloaded_samples"]))
+                  taxonomies.append(self.build_taxonomy(level, namespace, predicate, value))
+              if "country" in raw:
+                 taxonomies.append(self.build_taxonomy(level, namespace, "Country", raw['country']))
 
         return {"taxonomies": taxonomies}
 
@@ -183,11 +181,13 @@ class VirusTotalAnalyzer(Analyzer):
       return artifacts
 
     def run(self):
-        if self.service == 'get':
+        try:
             records = self.getReport()
             self.report(records)
-        else:
-            self.error('Invalid service')
-
+            
+        except Exception as e: 
+            print(e)
+            self.unexpectedError("Unknown error while running VirusTotal analyzer")
+            
 if __name__ == '__main__':
     VirusTotalAnalyzer().run()

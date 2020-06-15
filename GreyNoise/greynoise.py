@@ -126,7 +126,7 @@ class GreyNoiseAnalyzer(Analyzer):
 
                 # Added scores mapping with the final level
                 if final_level == "malicious":
-                   score = "4"
+                   score = "5"
                 elif final_level == "info":
                    score = "1"
                 else:
@@ -134,15 +134,15 @@ class GreyNoiseAnalyzer(Analyzer):
                 taxonomies.append(self.build_taxonomy(final_level,'GreyNoise',"Score",score))
 
                 # Added information about first and last seen dates
-                first_seen = record.get('first_seen', None)
-                last_seen = record.get('last_seen', None)
+                first_seen = raw.get('data')[0].get('first_seen', None)
+                last_seen = raw.get('data')[0].get('last_seen', None)
                 if first_seen != None:
                    taxonomies.append(self.build_taxonomy(final_level,'GreyNoise',"First_seen",first_seen))
                 if last_seen != None:
                    taxonomies.append(self.build_taxonomy(final_level,'GreyNoise',"Last_seen",last_seen))
                 # Added information about geolocation
-                country = record.get('metadata').get('country', None)
-                city = record.get('metadata').get('city', None)
+                country = raw.get('data')[0].get('metadata').get('country', None)
+                city = raw.get('data')[0].get('metadata').get('city', None)
                 if country != None:
                    taxonomies.append(self.build_taxonomy(final_level,'GreyNoise',"Country",country))
                 if city != None:

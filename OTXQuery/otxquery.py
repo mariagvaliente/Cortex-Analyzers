@@ -65,16 +65,17 @@ class OTXQueryAnalyzer(Analyzer):
                   my_score = '0'
                elif 5 <= threat_score <= 6:
                   my_score = '2'
-               elif 3 <= threat_score <= 4:
+               elif threat_score == 4:
                   my_score = '3'
-               elif 1 <= threat_score <= 2:
+               elif threat_score == 3:
                   my_score = '4'
                else:
                   my_score = '5'
             else:
-               my_score = '0'
+               my_score = '1'
             
             self.report({
+                'result': 'found',
                 'pulse_count': ip_general.get('pulse_info', {}).get('count', "0"),
                 'pulses': ip_general.get('pulse_info', {}).get('pulses', "-"),
                 'first_seen': first_seen,
@@ -93,7 +94,7 @@ class OTXQueryAnalyzer(Analyzer):
                 'passive_dns': ip_.get('passive_dns', {}).get('passive_dns', "-")
             })
         except Exception:
-            self.error('API Error! Please verify data type is correct.')
+            self.report({'result': 'not found'})
 
     def otx_query_domain(self, data):
         baseurl = "https://otx.alienvault.com:443/api/v1/indicators/domain/%s/" % data
@@ -126,13 +127,17 @@ class OTXQueryAnalyzer(Analyzer):
             if len(list_verdict) != 0:
                gsb = list_verdict[0].get('gsb')
                if len(gsb) == 0:
-                  my_score = '1'
+                  # Not identified as malicious
+                  my_score = '0'
                else:
-                  my_score = '4'
+                  # Generic, malware
+                  my_score = '5'
             else:
-               my_score = '0'
+               # Not analyzed
+               my_score = '1'
 
             result = {
+                'result': 'found',
                 'pulse_count': ip_.get('general', {}).get('pulse_info', {}).get('count', "0"),
                 'pulses': ip_.get('general', {}).get('pulse_info', {}).get('pulses', "-"),
                 'first_seen': first_seen,
@@ -157,7 +162,7 @@ class OTXQueryAnalyzer(Analyzer):
 
             self.report(result)
         except Exception:
-            self.error('API Error! Please verify data type is correct.')
+            self.report({'result': 'not found'})
 
     def otx_query_file(self, data):
         baseurl = "https://otx.alienvault.com:443/api/v1/indicators/file/%s/" % data
@@ -186,52 +191,51 @@ class OTXQueryAnalyzer(Analyzer):
                first_seen = None
 
             # Added a score based on cuckoo score or antivirus results
-            if ip_['analysis']['analysis']:            
+            if ip_['analysis']['analysis']:       
                 cuckoo_score = ip_['analysis']['analysis'].get('plugins').get('cuckoo')
                 result_msdefender = ip_['analysis']['analysis'].get('plugins').get('msdefender').get('results')
                 result_avast = ip_['analysis']['analysis'].get('plugins').get('avast').get('results')
                 result_clamav = ip_['analysis']['analysis'].get('plugins').get('clamav').get('results')
                 if cuckoo_score is not None:
                    score = cuckoo_score.get('result').get('info').get('score')
-                   if 9 <= score <= 10:
+                   if score >= 10.0:
                       my_score = '5'
-                   elif 7 <= score <= 8:
+                   elif 7.0 <= score < 10.0:
                       my_score = '4'
-                   elif 5 <= score <= 6:
+                   elif 5.0 <= score < 7.0:
                       my_score = '3'
-                   elif 1 <= score <= 4:
+                   elif 1.0 <= score < 5.0:
                       my_score = '2'
                    else:
                       my_score = '0'
-                elif result_msdefender != None and result_avast != None:
+                elif result_msdefender or result_avast or result_clamav:
                    alerts_msdefender = result_msdefender.get('alerts')
                    alerts_avast = result_avast.get('alerts')
-                   if alerts_msdefender != None:
-                     for alert in alerts_msdefender:
-                        if alert == "Malware infection":
-                           verdict_msdefender = 'malware'
-                     if alerts_avast != None:
-                       for alert in alerts_avast:
-                           if alert == "Malware infection":
-                              verdict_avast = 'malware'
-                       if verdict_msdefender == 'malware' and verdict_avast == 'malware':
-                          my_score = '3'
-                       if result_clamav != None:
-                          alerts_clamav = result_clamav.get('alerts')
-                          if alerts_clamav != None:
-                            for alert in alerts_clamav:
-                                if alert == "Malware infection":
-                                   verdict_clamav = 'malware'
-                            if verdict_clamav == 'malware':
-                               my_score = '4'
+                   alerts_clamav = result_clamav.get('alerts')
+                   if alerts_msdefender:
+                      for alert in alerts_msdefender:
+                          if alert == "Malware infection":
+                             verdict_msdefender = 'malware'
+                   if alerts_avast:
+                      for alert in alerts_avast:
+                          if alert == "Malware infection":
+                             verdict_avast = 'malware'
+                          my_score = '4'
+                   if result_clamav:
+                      for alert in alerts_clamav:
+                          if alert == "Malware infection":
+                             verdict_clamav = 'malware'
+                   if verdict_msdefender == "Malware infection" or verdict_avast == "Malware infection" or verdict_clamav == "Malware infection":
+                      my_score = '5'
                    else:
-                       my_score = '0'
+                      my_score = '1'
                 else:
-                    my_score = '0'
+                    my_score = '1'
                 
                       
                 # file has been analyzed before
                 self.report({
+                    'result': 'found',
                     'pulse_count': ip_.get('general', {}).get('pulse_info', {}).get('count', "0"),
                     'pulses': ip_.get('general', {}).get('pulse_info', {}).get('pulses', "-"),
                     'first_seen': first_seen,
@@ -262,7 +266,7 @@ class OTXQueryAnalyzer(Analyzer):
                     'pulses': ip_['general']['pulse_info']['pulses']
                 })
         except Exception:
-            self.error('API Error! Please verify data type is correct.')
+            self.report({'result': 'not found'})
 
     def otx_query_url(self, data):
         # urlencode the URL that we are searching for
@@ -297,13 +301,17 @@ class OTXQueryAnalyzer(Analyzer):
             if len(list_verdict) != 0:
                gsb = list_verdict[0].get('gsb')
                if len(gsb) == 0:
-                  my_score = '1'
+                  # Not identified as malicious
+                  my_score = '0'
                else:
-                  my_score = '4'
+                  # Generic, malware
+                  my_score = '5'
             else:
-               my_score = '0'
+               # Not analyzed
+               my_score = '1'
 
             self.report({
+                'result': 'found',
                 'pulse_count': IP_.get('general', {}).get('pulse_info', {}).get('count', "0"),
                 'pulses': IP_.get('general', {}).get('pulse_info', {}).get('pulses', "-"),
                 'first_seen': first_seen,
@@ -314,7 +322,7 @@ class OTXQueryAnalyzer(Analyzer):
                 'url_list': IP_.get('url_list', {}).get('url_list', "-")
             })
         except Exception:
-            self.error('API Error! Please verify data type is correct.')
+            self.report({'result': 'not found'})
 
     def summary(self, raw):
         taxonomies = []
@@ -366,86 +374,87 @@ class OTXQueryAnalyzer(Analyzer):
     # Added artifacts function in order to extract different type of related observables
     def artifacts(self, report):
         artifacts = []
-        if self.data_type == "domain":
-           url_list = report['url_list']
-           if len(url_list) != 0:
-               for url in url_list:
-                   observable_url = {'dataType': 'url', 'data': url['url']}
-                   if observable_url is not None and observable_url not in artifacts:
-                      artifacts.append(observable_url)
-           malware_samples = report['malware_samples']
-           if malware_samples != "-":
-               for sample in malware_samples:
-                   observable_hash = {'dataType': 'hash', 'data': sample}
-                   if observable_hash is not None and observable_hash not in artifacts:
-                      artifacts.append(observable_hash)
-           passive_dns = report['passive_dns']
-           if len(passive_dns) != 0:
-              for p in passive_dns:
-                  if p['address'] != None:
-                     regex_ip = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', p['address'])
-                     if len(regex_ip) != 0:
-                        dir_ip = regex_ip[0]
-                        observable_ip = {'dataType': 'ip', 'data': dir_ip}
-                        if observable_ip not in artifacts:
-                           artifacts.append(observable_ip)
-        elif self.data_type == "ip":
-           url_list = report['url_list']
-           if len(url_list) != 0:
-               for url in url_list:
-                   observable_url = {'dataType': 'url', 'data': url['url']}
-                   if observable_url is not None and observable_url not in artifacts:
-                      artifacts.append(observable_url)
-           malware_samples = report['malware_samples']
-           if malware_samples != "-":
-               for sample in malware_samples:
-                   observable_hash = {'dataType': 'hash', 'data': sample}
-                   if observable_hash is not None and observable_hash not in artifacts:
-                      artifacts.append(observable_hash)
-           passive_dns = report['passive_dns']
-           if len(passive_dns) != 0:
-               for dns in passive_dns:
-                   observable_domain = {'dataType': 'domain', 'data': dns['hostname']}
-                   if observable_domain is not None and observable_domain not in artifacts:
-                      artifacts.append(observable_domain)
-        elif self.data_type == "url":
-           url_list = report['url_list']
-           if len(url_list) != 0:
-               for url in url_list:
-                   observable_ip = {'dataType': 'ip', 'data': url['result']['urlworker']['ip']}
-                   if observable_ip is not None and observable_ip not in artifacts:
-                      artifacts.append(observable_ip)
-                   observable_sha256 = {'dataType': 'hash', 'data': url['result']['urlworker']['sha256']}
-                   if observable_sha256 is not None and observable_sha256 not in artifacts:
-                      artifacts.append(observable_sha256)             
-                   observable_md5 = {'dataType': 'hash', 'data': url['result']['urlworker']['md5']}
-                   if observable_md5 is not None and observable_md5 not in artifacts:
-                      artifacts.append(observable_md5)
-        elif self.data_type == "hash":
-           pulses = report['pulses']
-           if len(pulses) != 0:
-              for pulse in pulses:
-                  malware_families = pulse['malware_families']
-                  if len(malware_families) != 0:
-                     for m in malware_families:
-                         observable_malware_family = {'dataType': 'malware_family', 'data': m['display_name']}
-                         if observable_malware_family is not None and observable_malware_family not in artifacts:
-                            artifacts.append(observable_malware_family)
-           sha1 = report['sha1']
-           if sha1 != None:
-              observable_sha1 = {'dataType': 'hash', 'data': sha1}
-              if observable_sha1 not in artifacts:
-                 artifacts.append(observable_sha1)
-           sha256 = report['sha256']
-           if sha256 != None:
-              observable_sha256 = {'dataType': 'hash', 'data': sha256}
-              if observable_sha256 not in artifacts:
-                 artifacts.append(observable_sha256)
-           md5 = report['md5']
-           if md5 != None:
-              observable_md5 = {'dataType': 'hash', 'data': md5}
-              if observable_md5 not in artifacts:
-                 artifacts.append(observable_md5)
+        if report['result'] == 'found':
+            if self.data_type == "domain":
+               url_list = report['url_list']
+               if url_list and len(url_list) != 0:
+                   for url in url_list:
+                       observable_url = {'dataType': 'url', 'data': url['url']}
+                       if observable_url is not None and observable_url not in artifacts:
+                          artifacts.append(observable_url)
+               malware_samples = report['malware_samples']
+               if malware_samples and malware_samples != "-":
+                   for sample in malware_samples:
+                       observable_hash = {'dataType': 'hash', 'data': sample}
+                       if observable_hash is not None and observable_hash not in artifacts:
+                          artifacts.append(observable_hash)
+               passive_dns = report['passive_dns']
+               if passive_dns and len(passive_dns) != 0:
+                  for p in passive_dns:
+                      if p['address'] != None:
+                         regex_ip = re.findall(r'(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})', p['address'])
+                         if len(regex_ip) != 0:
+                            dir_ip = regex_ip[0]
+                            observable_ip = {'dataType': 'ip', 'data': dir_ip}
+                            if observable_ip not in artifacts:
+                               artifacts.append(observable_ip)
+            elif self.data_type == "ip":
+               url_list = report['url_list']
+               if url_list and len(url_list) != 0:
+                   for url in url_list:
+                       observable_url = {'dataType': 'url', 'data': url['url']}
+                       if observable_url is not None and observable_url not in artifacts:
+                          artifacts.append(observable_url)
+               malware_samples = report['malware_samples']
+               if malware_samples and malware_samples != "-":
+                   for sample in malware_samples:
+                       observable_hash = {'dataType': 'hash', 'data': sample}
+                       if observable_hash is not None and observable_hash not in artifacts:
+                          artifacts.append(observable_hash)
+               passive_dns = report['passive_dns']
+               if passive_dns and len(passive_dns) != 0:
+                   for dns in passive_dns:
+                       observable_domain = {'dataType': 'domain', 'data': dns['hostname']}
+                       if observable_domain is not None and observable_domain not in artifacts:
+                          artifacts.append(observable_domain)
+            elif self.data_type == "url":
+               url_list = report['url_list']
+               if url_list and len(url_list) != 0:
+                   for url in url_list:
+                       observable_ip = {'dataType': 'ip', 'data': url['result']['urlworker']['ip']}
+                       if observable_ip is not None and observable_ip not in artifacts:
+                          artifacts.append(observable_ip)
+                       observable_sha256 = {'dataType': 'hash', 'data': url['result']['urlworker']['sha256']}
+                       if observable_sha256 is not None and observable_sha256 not in artifacts:
+                          artifacts.append(observable_sha256)             
+                       observable_md5 = {'dataType': 'hash', 'data': url['result']['urlworker']['md5']}
+                       if observable_md5 is not None and observable_md5 not in artifacts:
+                          artifacts.append(observable_md5)
+            elif self.data_type == "hash":
+               pulses = report['pulses']
+               if pulses and len(pulses) != 0:
+                  for pulse in pulses:
+                      malware_families = pulse['malware_families']
+                      if malware_families and len(malware_families) != 0:
+                         for m in malware_families:
+                             observable_malware_family = {'dataType': 'malware_family', 'data': m['display_name']}
+                             if observable_malware_family is not None and observable_malware_family not in artifacts:
+                                artifacts.append(observable_malware_family)
+               sha1 = report['sha1']
+               if sha1 != None:
+                  observable_sha1 = {'dataType': 'hash', 'data': sha1}
+                  if observable_sha1 not in artifacts:
+                     artifacts.append(observable_sha1)
+               sha256 = report['sha256']
+               if sha256 != None:
+                  observable_sha256 = {'dataType': 'hash', 'data': sha256}
+                  if observable_sha256 not in artifacts:
+                     artifacts.append(observable_sha256)
+               md5 = report['md5']
+               if md5 != None:
+                  observable_md5 = {'dataType': 'hash', 'data': md5}
+                  if observable_md5 not in artifacts:
+                     artifacts.append(observable_md5)
                  
         return artifacts
                           

@@ -13,7 +13,6 @@ class UrlscanAnalyzer(Analyzer):
 
     def __init__(self):
         Analyzer.__init__(self)
-        self.service = self.getParam('config.service', None, 'Service parameter is missing')
         self.api_key = self.get_param('config.key', None, 'Missing URLScan API key')
         self.headers = {"API-Key": self.api_key, "Content-Type": "application/json"}
 
@@ -22,8 +21,8 @@ class UrlscanAnalyzer(Analyzer):
         indicator_value = str(data)
         indicator_type = str(self.data_type)
         if indicator_type == "url":
-            indicator_value_parsed_hxxp = indicator_value.replace("hxxp", "http")
-            response = requests.get('https://urlscan.io/api/v1/search?q="{}"'.format(indicator_value_parsed_hxxp),headers=self.headers)
+            indicator_value_parsed = indicator_value.replace("hxxp", "http")
+            response = requests.get('https://urlscan.io/api/v1/search?q="{}"'.format(indicator_value_parsed),headers=self.headers)
         else:
             response = requests.get('https://urlscan.io/api/v1/search?q={}:{}'.format(indicator_type, indicator_value),headers=self.headers)
 
@@ -31,7 +30,6 @@ class UrlscanAnalyzer(Analyzer):
             if self.data_type == "url":
                 response_json = response.json()
                 response_results = response_json.get('results')
-                print(response_results)
                 if len(response_results) == 0:
                     return ({'page': 'Not found'})
                 else:
@@ -61,24 +59,28 @@ class UrlscanAnalyzer(Analyzer):
 
                     offset += len(response_results)
 
-                    while(offset < total_results):
-
-                        response = requests.get(
-                            'https://urlscan.io/api/v1/search?q={}:{}&offset={}'.format(indicator_type, indicator_value, offset),
-                            headers=self.headers)
-                        response_results = response.json()['results']
-                        for r in response_results:
-                            task = r.get('task')
-                            time = task.get('time')
-                            dates.append(time)
-                            url = task.get('url')
-                            if url not in urls:
-                               urls.append(url)
-
-                        offset += len(response_results)
-
+                    if total_results <= 10000:
+                        while(offset < total_results):
+    
+                            response = requests.get(
+                                'https://urlscan.io/api/v1/search?q={}:{}&offset={}'.format(indicator_type, indicator_value, offset),
+                                headers=self.headers)
+                            response_results = response.json()['results']
+                            
+                            for r in response_results:
+                                task = r.get('task')
+                                time = task.get('time')
+                                dates.append(time)
+                                url = task.get('url')
+                                if url not in urls:
+                                   urls.append(url)
+    
+                            offset += len(response_results)
 
                     return response_json
+                    
+        elif response.status_code == 400:
+             return ({'page': 'Not found'})
         else:
             self.error("urlscan.io returns %s" % response.status_code)
             
@@ -87,34 +89,46 @@ class UrlscanAnalyzer(Analyzer):
         taxonomies = []
         namespace = "Urlscan.io"
         level = "info"
-        
+        print("ENTRA")
         if self.data_type == "url":
             malicious = raw["verdicts"]["overall"]["malicious"]
             score = raw["verdicts"]["overall"]["score"]
             votesBenign = raw["verdicts"]["community"]["votesBenign"]
             tags = raw["verdicts"]["overall"]["tags"]
-            #TAGS
-            if len(tags) != 0:
-               for tag in tags:
-                   taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag))        
+       
             #SCORE
             if malicious:
                level = 'malicious'
             elif score > 0:
                level = 'suspicious'
+            
+            if int(score) == 0:
+               my_score = '0'
+               level = 'safe'
+            elif 20 > int(score) >= 1:
+               my_score = '2'
+            elif 60 > int(score) >= 20:
+               my_score = '3'
+            elif 80 > int(score) >= 60:
+               my_score = '4'
+            elif 100 >= int(score) >= 80:
+               my_score = '5'
             else:
-               if int(score) == 0:
-                  my_score = '0'
-                  level = 'safe'
-               elif 20 > int(score) >= 1:
-                  my_score = '2'
-               elif 60 > int(score) >= 20:
-                  my_score = '3'
-               elif 80 > int(score) >= 60:
-                  my_score = '4'
-               elif 100 >= int(score) >= 80:
-                  my_score = '5'
+               my_score = '1'
+                  
             taxonomies.append(self.build_taxonomy(level, namespace, "Score", my_score))
+            
+            #TAGS
+            if len(tags) != 0:
+               for tag in tags:
+                   taxonomies.append(self.build_taxonomy(level, namespace, "Tag", tag)) 
+            
+            # LAST SEEN
+            requests = raw["data"]["requests"]
+            if len(requests) != 0:
+               last_seen_timestamp = requests[0].get('request').get('wallTime')
+               last_seen = datetime.datetime.fromtimestamp(last_seen_timestamp).isoformat()
+               taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
         else:
             #FIRST AND LAST SEEN
             if len(dates) != 0:
@@ -124,6 +138,7 @@ class UrlscanAnalyzer(Analyzer):
                taxonomies.append(self.build_taxonomy(level, namespace, "Last_seen", last_seen))
                
         
+        print(taxonomies)
         return {"taxonomies": taxonomies}
 
     def artifacts(self, report):
@@ -155,16 +170,14 @@ class UrlscanAnalyzer(Analyzer):
                   if observable_url not in artifacts:
                       artifacts.append(observable_url)
                       
+        print(artifacts)
         return artifacts
 
 
     def run(self):
         try:
-            if self.service == "search_ioc":
-               records = self.get_search()
-               self.report(records)
-            else:
-               self.error('Invalid service')        
+            records = self.get_search()
+            self.report(records)     
             
         except Exception as e: 
             print(e)

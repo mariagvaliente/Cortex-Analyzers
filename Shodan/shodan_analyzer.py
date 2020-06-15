@@ -99,20 +99,22 @@ class ShodanAnalyzer(Analyzer):
     def artifacts(self, report):
         artifacts = []
         if self.service == 'reverse_dns':
-            for k in report['records'].keys():
-                domains = report['records'][k]
-                for domain in domains:
-                    if domain != None:
-                       observable_domain = {'dataType': 'domain', 'data': domain}
-                       if observable_domain not in artifacts:
-                          artifacts.append(observable_domain)
+            if report['records']:
+                for k in report['records'].keys():
+                    domains = report['records'][k]
+                    for domain in domains:
+                        if domain != None:
+                           observable_domain = {'dataType': 'domain', 'data': domain}
+                           if observable_domain not in artifacts:
+                              artifacts.append(observable_domain)
         if self.service == 'dns_resolve':
-            for k in report['records'].keys():
-                ip = report['records'][k]
-                if ip != None:
-                   observable_ip = {'dataType': 'ip', 'data': ip}
-                   if observable_ip not in artifacts:
-                      artifacts.append(observable_ip)
+            if report['records']:
+                for k in report['records'].keys():
+                    ip = report['records'][k]
+                    if ip != None:
+                       observable_ip = {'dataType': 'ip', 'data': ip}
+                       if observable_ip not in artifacts:
+                          artifacts.append(observable_ip)
         return artifacts
         
 

@@ -8,9 +8,6 @@
   "dataTypeList": ["domain", "fqdn", "ip", "hash", "filename", "url"],
   "command": "Urlscan/Urlscan_Analyzer.py",
   "baseConfig": "Urlscan.io",
-  "config": {
-        "service": "search_ioc"
-  },
   "configurationItems": [
     {
       "name": "key",
