@@ -33,13 +33,10 @@ class GreyNoiseAnalyzer(Analyzer):
         levels = classification_level_map.values()
 
         new_level = classification_level_map.get(new_classification, 'info')
-        print(new_level)
         new_index = list(levels).index(new_level)
-        print(new_index)
 
         try:
             current_index = list(levels).index(current_level)
-            print(current_index)
         except ValueError:  # There is no existing level
             current_index = -1
 
@@ -116,7 +113,6 @@ class GreyNoiseAnalyzer(Analyzer):
                     classification = record.get('classification', 'unknown')
                     taxonomy_data[actor] += 1
                     final_level = self._get_level(final_level, classification)
-                    print(final_level)
 
                 if len(taxonomy_data) > 1:  # Multiple tags have been found
                     taxonomies.append(self.build_taxonomy(final_level, 'GreyNoise', 'entries', len(taxonomy_data)))
