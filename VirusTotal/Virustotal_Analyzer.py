@@ -161,6 +161,20 @@ class VirusTotalAnalyzer(Analyzer):
                  observable_hash = {'dataType': 'hash', 'data': content_hash}
                  if observable_hash not in artifacts:
                     artifacts.append(observable_hash)
+              contacted_urls = additional_info.get('contacted_urls')
+              if contacted_urls != None:
+                 if len(contacted_urls) != 0:
+                    for url in contacted_urls:
+                        observable_url = {'dataType': 'url', 'data': url}
+                        if observable_url not in artifacts:
+                           artifacts.append(observable_url)
+              network_infrastructure = additional_info.get('network_infrastructure')
+              if network_infrastructure != None:
+                 if len(network_infrastructure) != 0:
+                    for url in network_infrastructure:
+                        observable_network_url = {'dataType': 'url', 'data': url}
+                        if observable_network_url not in artifacts:
+                           artifacts.append(observable_network_url)    
           if self.data_type == 'hash':
              submission_names = report.get('submission_names')
              if submission_names != None:
@@ -169,15 +183,14 @@ class VirusTotalAnalyzer(Analyzer):
                        observable_filename = {'dataType': 'filename', 'data': s}
                        if observable_filename not in artifacts:
                           artifacts.append(observable_filename)
-             contacted_urls = report.get('ITW_urls')
-             if contacted_urls != None:
-                if len(contacted_urls) != 0:
-                   for url in contacted_urls:
-                       observable_url = {'dataType': 'url', 'data': url}
-                       if observable_url not in artifacts:
-                          artifacts.append(observable_url)             
-          
-
+             itw_urls = report.get('ITW_urls')
+             if itw_urls != None:
+                if len(itw_urls) != 0:
+                   for url in itw_urls:
+                       observable_itw_url = {'dataType': 'url', 'data': url}
+                       if observable_itw_url not in artifacts:
+                          artifacts.append(observable_itw_url)
+      
       return artifacts
 
     def run(self):

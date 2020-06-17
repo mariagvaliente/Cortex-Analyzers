@@ -58,6 +58,7 @@ class OTXQueryAnalyzer(Analyzer):
                
             # Added a score based on the ip reputation
             reputation = ip_['reputation']['reputation']
+            print(reputation)
             
             if reputation != None:
                threat_score = reputation.get('threat_score')
@@ -124,6 +125,7 @@ class OTXQueryAnalyzer(Analyzer):
             
             # Added a score based on Google Safe Browsing verdict
             list_verdict = ip_['url_list']['url_list']
+            print(list_verdict)
             if len(list_verdict) != 0:
                gsb = list_verdict[0].get('gsb')
                if len(gsb) == 0:
@@ -191,7 +193,8 @@ class OTXQueryAnalyzer(Analyzer):
                first_seen = None
 
             # Added a score based on cuckoo score or antivirus results
-            if ip_['analysis']['analysis']:       
+            if ip_['analysis']['analysis']:
+                print(ip_['analysis']['analysis'])         
                 cuckoo_score = ip_['analysis']['analysis'].get('plugins').get('cuckoo')
                 result_msdefender = ip_['analysis']['analysis'].get('plugins').get('msdefender').get('results')
                 result_avast = ip_['analysis']['analysis'].get('plugins').get('avast').get('results')
@@ -298,6 +301,7 @@ class OTXQueryAnalyzer(Analyzer):
                
             # Added a score based on Google Safe Browsing verdict
             list_verdict = IP_['url_list']['url_list']
+            print(list_verdict)
             if len(list_verdict) != 0:
                gsb = list_verdict[0].get('gsb')
                if len(gsb) == 0:
@@ -336,7 +340,7 @@ class OTXQueryAnalyzer(Analyzer):
               level = 'malicious'
            elif score == '3':
               level = 'suspicious'
-           elif score == '2':
+           elif score == '2' or score == '1':
               level = 'info'
            else:
               level = 'safe'
