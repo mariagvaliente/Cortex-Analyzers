@@ -105,7 +105,7 @@ class AutoFocusAnalyzer(Analyzer):
                     value = "4"
                     level = "malicious"
                     taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict))
-                elif verdict == "malware" or verdict == "phising":
+                elif verdict == "malware" or verdict == "phishing":
                     value = "5"
                     level = "malicious"
                     taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict))
@@ -139,7 +139,7 @@ class AutoFocusAnalyzer(Analyzer):
                     value = "4"
                     level = "malicious"
                     taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict.lower()))
-                elif verdict == "MALWARE" or verdict == "PHISING" or verdict == "C2":
+                elif verdict == "MALWARE" or verdict == "PHISHING" or verdict == "C2":
                     value = "5"
                     level = "malicious"
                     taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict.lower()))
