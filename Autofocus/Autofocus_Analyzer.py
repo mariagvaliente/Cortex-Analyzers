@@ -101,7 +101,7 @@ class AutoFocusAnalyzer(Analyzer):
         if "metadata" in raw:
             if self.service == "search_hash":
                 verdict = raw.get('metadata').get('verdict')
-                if verdict == "grayware":
+                if verdict == "greyware":
                     value = "4"
                     level = "malicious"
                     taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict))
@@ -135,7 +135,7 @@ class AutoFocusAnalyzer(Analyzer):
                     verdict = verdict_dict.get('PAN_DB')
                 else:
                     verdict = None
-                if verdict == "GRAYWARE":
+                if verdict == "GREYWARE":
                     value = "4"
                     level = "malicious"
                     taxonomies.append(self.build_taxonomy(level,namespace,"Verdict",verdict.lower()))
